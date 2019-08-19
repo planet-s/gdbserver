@@ -21,19 +21,19 @@ impl Status {
     pub fn is_exited(&self) -> bool {
         match self {
             Status::Exited(_) => true,
-            _ => false
+            _ => false,
         }
     }
     pub fn is_signaled(&self) -> bool {
         match self {
             Status::Signaled(_) => true,
-            _ => false
+            _ => false,
         }
     }
     pub fn is_stopped(&self) -> bool {
         match self {
             Status::Stopped(_) => true,
-            _ => false
+            _ => false,
         }
     }
 }
@@ -62,7 +62,8 @@ pub trait Target: Sized {
 
     /// Resume execution while instruction pointer is inside the range
     fn resume<R>(&mut self, range: R) -> Result<()>
-        where R: RangeBounds<u64>
+    where
+        R: RangeBounds<u64>,
     {
         loop {
             let rip = self.step(None)?;

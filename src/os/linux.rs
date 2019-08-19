@@ -1,10 +1,9 @@
-use crate::Result;
 use super::{Registers, Status};
+use crate::Result;
 
 use std::{
     ffi::CString,
-    io,
-    iter,
+    io, iter,
     mem::{self, MaybeUninit},
     ptr,
 };
@@ -22,7 +21,7 @@ macro_rules! re {
             return Err(Box::new(io::Error::last_os_error()));
         }
         result
-    }}
+    }};
 }
 // Handle error as C: Return the errno
 macro_rules! ce {
@@ -32,11 +31,12 @@ macro_rules! ce {
             return Err(*libc::__errno_location() as i32);
         }
         result
-    }}
+    }};
 }
 
 fn getmem<G, E>(mut src: usize, dest: &mut [u8], mut get: G) -> Result<usize, E>
-    where G: FnMut(usize) -> Result<usize, E>
+where
+    G: FnMut(usize) -> Result<usize, E>,
 {
     for chunk in dest.chunks_mut(mem::size_of::<usize>()) {
         let bytes = get(src)?.to_ne_bytes();
@@ -74,7 +74,8 @@ where
 impl super::Target for Os {
     fn new(program: String, args: Vec<String>) -> Result<Self> {
         let program = CString::new(program)?.into_raw();
-        let args = args.into_iter()
+        let args = args
+            .into_iter()
             .map(|s| CString::new(s).map(|s| s.into_raw() as *const _))
             .chain(iter::once(Ok(ptr::null())))
             .collect::<Result<Vec<*const libc::c_char>, _>>()?;
@@ -85,7 +86,10 @@ impl super::Target for Os {
             if pid == 0 {
                 // Must not drop any memory, not unwind (panic).
                 if libc::ptrace(libc::PTRACE_TRACEME) < 0 {
-                    eprintln!("ptrace(PTRACE_TRACEME) failed: {:?}", io::Error::last_os_error());
+                    eprintln!(
+                        "ptrace(PTRACE_TRACEME) failed: {:?}",
+                        io::Error::last_os_error()
+                    );
                     libc::exit(1);
                 }
                 if libc::raise(libc::SIGSTOP) < 0 {
@@ -141,13 +145,23 @@ impl super::Target for Os {
     fn getregs(&mut self) -> Result<Registers, i32> {
         let int = unsafe {
             let mut int: MaybeUninit<libc::user_regs_struct> = MaybeUninit::uninit();
-            ce!(libc::ptrace(libc::PTRACE_GETREGS, self.pid, 0, int.as_mut_ptr()));
+            ce!(libc::ptrace(
+                libc::PTRACE_GETREGS,
+                self.pid,
+                0,
+                int.as_mut_ptr()
+            ));
             int.assume_init()
         };
 
         let float = unsafe {
             let mut float: MaybeUninit<libc::user_fpregs_struct> = MaybeUninit::uninit();
-            ce!(libc::ptrace(libc::PTRACE_GETFPREGS, self.pid, 0, float.as_mut_ptr()));
+            ce!(libc::ptrace(
+                libc::PTRACE_GETFPREGS,
+                self.pid,
+                0,
+                float.as_mut_ptr()
+            ));
             float.assume_init()
         };
 
@@ -262,12 +276,30 @@ impl super::Target for Os {
         float.xmm_space[7] = registers.xmm7.map(|r| r as _).unwrap_or(float.xmm_space[7]);
         float.xmm_space[8] = registers.xmm8.map(|r| r as _).unwrap_or(float.xmm_space[8]);
         float.xmm_space[9] = registers.xmm9.map(|r| r as _).unwrap_or(float.xmm_space[9]);
-        float.xmm_space[10] = registers.xmm10.map(|r| r as _).unwrap_or(float.xmm_space[10]);
-        float.xmm_space[11] = registers.xmm11.map(|r| r as _).unwrap_or(float.xmm_space[11]);
-        float.xmm_space[12] = registers.xmm12.map(|r| r as _).unwrap_or(float.xmm_space[12]);
-        float.xmm_space[13] = registers.xmm13.map(|r| r as _).unwrap_or(float.xmm_space[13]);
-        float.xmm_space[14] = registers.xmm14.map(|r| r as _).unwrap_or(float.xmm_space[14]);
-        float.xmm_space[15] = registers.xmm15.map(|r| r as _).unwrap_or(float.xmm_space[15]);
+        float.xmm_space[10] = registers
+            .xmm10
+            .map(|r| r as _)
+            .unwrap_or(float.xmm_space[10]);
+        float.xmm_space[11] = registers
+            .xmm11
+            .map(|r| r as _)
+            .unwrap_or(float.xmm_space[11]);
+        float.xmm_space[12] = registers
+            .xmm12
+            .map(|r| r as _)
+            .unwrap_or(float.xmm_space[12]);
+        float.xmm_space[13] = registers
+            .xmm13
+            .map(|r| r as _)
+            .unwrap_or(float.xmm_space[13]);
+        float.xmm_space[14] = registers
+            .xmm14
+            .map(|r| r as _)
+            .unwrap_or(float.xmm_space[14]);
+        float.xmm_space[15] = registers
+            .xmm15
+            .map(|r| r as _)
+            .unwrap_or(float.xmm_space[15]);
 
         unsafe {
             ce!(libc::ptrace(libc::PTRACE_SETREGS, self.pid, 0, &int));
@@ -280,11 +312,9 @@ impl super::Target for Os {
     fn getmem(&mut self, src: usize, dest: &mut [u8]) -> Result<usize, i32> {
         // TODO: Don't report errors when able to read part of requested?
         // Also implement this in the Redox kernel perhaps
-        getmem(
-            src,
-            dest,
-            |addr| unsafe { Ok(ce!(libc::ptrace(libc::PTRACE_PEEKDATA, self.pid, addr)) as usize) },
-        )
+        getmem(src, dest, |addr| unsafe {
+            Ok(ce!(libc::ptrace(libc::PTRACE_PEEKDATA, self.pid, addr)) as usize)
+        })
     }
 
     fn setmem(&mut self, src: &[u8], dest: usize) -> Result<(), i32> {
@@ -293,28 +323,49 @@ impl super::Target for Os {
             src,
             dest,
             |addr| unsafe { Ok(ce!(libc::ptrace(libc::PTRACE_PEEKDATA, self.pid, addr)) as usize) },
-            |addr, word| unsafe { ce!(libc::ptrace(libc::PTRACE_POKEDATA, self.pid, addr, word)); Ok(()) }
+            |addr, word| unsafe {
+                ce!(libc::ptrace(libc::PTRACE_POKEDATA, self.pid, addr, word));
+                Ok(())
+            },
         )
     }
 
     fn step(&mut self, signal: Option<u8>) -> Result<Option<u64>> {
         unsafe {
-            re!(libc::ptrace(libc::PTRACE_SINGLESTEP, self.pid, 0, signal.unwrap_or(0) as libc::c_uint));
+            re!(libc::ptrace(
+                libc::PTRACE_SINGLESTEP,
+                self.pid,
+                0,
+                signal.unwrap_or(0) as libc::c_uint
+            ));
             re!(libc::waitpid(self.pid, &mut self.last_status, 0));
 
-            Ok(if libc::WIFSTOPPED(self.last_status) && libc::WSTOPSIG(self.last_status) == libc::SIGTRAP {
-                let rip = re!(libc::ptrace(libc::PTRACE_PEEKUSER, self.pid, libc::RIP as usize * mem::size_of::<usize>()));
-                Some(rip as u64)
-            } else {
-                dbg!(self.status());
-                None
-            })
+            Ok(
+                if libc::WIFSTOPPED(self.last_status)
+                    && libc::WSTOPSIG(self.last_status) == libc::SIGTRAP
+                {
+                    let rip = re!(libc::ptrace(
+                        libc::PTRACE_PEEKUSER,
+                        self.pid,
+                        libc::RIP as usize * mem::size_of::<usize>()
+                    ));
+                    Some(rip as u64)
+                } else {
+                    dbg!(self.status());
+                    None
+                },
+            )
         }
     }
 
     fn cont(&mut self, signal: Option<u8>) -> Result<()> {
         unsafe {
-            re!(libc::ptrace(libc::PTRACE_CONT, self.pid, 0, signal.unwrap_or(0) as libc::c_uint));
+            re!(libc::ptrace(
+                libc::PTRACE_CONT,
+                self.pid,
+                0,
+                signal.unwrap_or(0) as libc::c_uint
+            ));
             re!(libc::waitpid(self.pid, &mut self.last_status, 0));
         }
         Ok(())
@@ -330,24 +381,18 @@ impl Drop for Os {
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        cell::Cell,
-        mem,
-    };
+    use std::{cell::Cell, mem};
 
     #[test]
     fn getmem() {
         const SOURCE: &[u8] = b"testing one two three";
         let mut dest = [0; 9];
-        super::getmem(
-            3,
-            &mut dest,
-            |addr| -> Result<usize, ()> {
-                let mut bytes = [0; mem::size_of::<usize>()];
-                bytes.copy_from_slice(&SOURCE[addr..addr+mem::size_of::<usize>()]);
-                Ok(usize::from_ne_bytes(bytes))
-            }
-        ).unwrap();
+        super::getmem(3, &mut dest, |addr| -> Result<usize, ()> {
+            let mut bytes = [0; mem::size_of::<usize>()];
+            bytes.copy_from_slice(&SOURCE[addr..addr + mem::size_of::<usize>()]);
+            Ok(usize::from_ne_bytes(bytes))
+        })
+        .unwrap();
         assert_eq!(&dest, b"ting one ");
     }
     #[test]
@@ -359,17 +404,17 @@ mod tests {
             3,
             |addr| -> Result<usize, ()> {
                 let mut bytes = [0; mem::size_of::<usize>()];
-                bytes.copy_from_slice(&source.get()[addr..addr+mem::size_of::<usize>()]);
+                bytes.copy_from_slice(&source.get()[addr..addr + mem::size_of::<usize>()]);
                 Ok(usize::from_ne_bytes(bytes))
             },
             |addr, word| -> Result<(), ()> {
                 let mut slice = source.get();
-                slice[addr..addr+mem::size_of::<usize>()]
-                    .copy_from_slice(&word.to_ne_bytes());
+                slice[addr..addr + mem::size_of::<usize>()].copy_from_slice(&word.to_ne_bytes());
                 source.set(slice);
                 Ok(())
             },
-        ).unwrap();
+        )
+        .unwrap();
         assert_eq!(&source.get(), b"tesXXXXXXXXXtwo three");
     }
 }

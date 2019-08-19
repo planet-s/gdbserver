@@ -1,4 +1,7 @@
-use gdb_protocol::{packet::{CheckedPacket, Kind}, io::GdbServer};
+use gdb_protocol::{
+    io::GdbServer,
+    packet::{CheckedPacket, Kind},
+};
 use structopt::StructOpt;
 
 use std::io::prelude::*;
@@ -61,10 +64,10 @@ fn main() -> Result<()> {
                 let mut out = Vec::new();
                 match tracee.getregs() {
                     Ok(regs) => regs.encode(&mut out)?,
-                    Err(errno) => write!(out, "E{:02X}", errno).unwrap()
+                    Err(errno) => write!(out, "E{:02X}", errno).unwrap(),
                 }
                 CheckedPacket::from_data(Kind::Packet, out)
-            },
+            }
             Some(b'G') => {
                 let mut out = Vec::new();
                 let regs = Registers::decode(&packet.data[1..])?;
@@ -73,7 +76,7 @@ fn main() -> Result<()> {
                     Err(errno) => write!(out, "E{:02X}", errno).unwrap(),
                 }
                 CheckedPacket::from_data(Kind::Packet, out)
-            },
+            }
             Some(b'm') => {
                 let data = &packet.data[1..];
                 let sep = memchr::memchr(b',', &data).ok_or("gdb didn't send a memory length")?;
@@ -86,13 +89,15 @@ fn main() -> Result<()> {
 
                 let mut bytes = vec![0; len];
                 match tracee.getmem(addr, &mut bytes) {
-                    Ok(read) => for byte in &bytes[..read] {
-                        write!(out, "{:02X}", byte).unwrap();
-                    },
+                    Ok(read) => {
+                        for byte in &bytes[..read] {
+                            write!(out, "{:02X}", byte).unwrap();
+                        }
+                    }
                     Err(errno) => write!(out, "E{:02X}", errno).unwrap(),
                 }
                 CheckedPacket::from_data(Kind::Packet, out)
-            },
+            }
             Some(b'M') => {
                 let data = &packet.data[1..];
                 let sep1 = memchr::memchr(b',', &data).ok_or("gdb didn't send a memory length")?;
@@ -115,7 +120,7 @@ fn main() -> Result<()> {
                     Err(errno) => write!(out, "E{:02X}", errno).unwrap(),
                 }
                 CheckedPacket::from_data(Kind::Packet, out)
-            },
+            }
             Some(b'X') => {
                 let data = &packet.data[1..];
                 let sep1 = memchr::memchr(b',', &data).ok_or("gdb didn't send a memory length")?;
@@ -133,7 +138,7 @@ fn main() -> Result<()> {
                     Err(errno) => write!(out, "E{:02X}", errno).unwrap(),
                 }
                 CheckedPacket::from_data(Kind::Packet, out)
-            },
+            }
             Some(b'v') => {
                 // if packet.data[1..].starts_with(b"Run") {
                 //     let mut cursor = &packet.data[1..];
@@ -149,51 +154,55 @@ fn main() -> Result<()> {
                 if packet.data[1..].starts_with(b"Cont") {
                     let data = &packet.data[1 + 4..];
                     match data.first() {
-                        Some(b'?') => CheckedPacket::from_data(Kind::Packet, b"vCont;s;c;S;C;r".to_vec()),
+                        Some(b'?') => {
+                            CheckedPacket::from_data(Kind::Packet, b"vCont;s;c;S;C;r".to_vec())
+                        }
                         Some(b';') => match data.get(1) {
                             Some(b's') => {
                                 tracee.step(None)?;
                                 encode_status(&mut tracee)
-                            },
+                            }
                             Some(b'S') => {
                                 let slice = data.get(2..4).ok_or("gdb didn't send a signal")?;
                                 let signal = u8::from_str_radix(std::str::from_utf8(&slice)?, 16)?;
                                 tracee.step(Some(signal))?;
                                 encode_status(&mut tracee)
-                            },
+                            }
                             Some(b'c') => {
                                 tracee.cont(None)?;
                                 encode_status(&mut tracee)
-                            },
+                            }
                             Some(b'C') => {
                                 let slice = data.get(2..4).ok_or("gdb didn't send a signal")?;
                                 let signal = u8::from_str_radix(std::str::from_utf8(&slice)?, 16)?;
                                 tracee.cont(Some(signal))?;
                                 encode_status(&mut tracee)
-                            },
+                            }
                             Some(b'r') => {
                                 let data = &data[2..];
 
-                                let sep1 = memchr::memchr(b',', data).ok_or("gdb didn't send an end value")?;
+                                let sep1 = memchr::memchr(b',', data)
+                                    .ok_or("gdb didn't send an end value")?;
                                 let (start, end) = data.split_at(sep1);
                                 let sep2 = memchr::memchr(b':', end).unwrap_or_else(|| end.len());
 
                                 let start = u64::from_str_radix(std::str::from_utf8(start)?, 16)?;
-                                let end = u64::from_str_radix(std::str::from_utf8(&end[1..sep2])?, 16)?;
+                                let end =
+                                    u64::from_str_radix(std::str::from_utf8(&end[1..sep2])?, 16)?;
 
                                 tracee.resume(start..end)?;
                                 encode_status(&mut tracee)
-                            },
-                            _ => CheckedPacket::empty()
+                            }
+                            _ => CheckedPacket::empty(),
                         },
-                        _ => CheckedPacket::empty()
+                        _ => CheckedPacket::empty(),
                     }
                 } else if packet.data[1..].starts_with(b"Kill") {
                     break;
                 } else {
                     CheckedPacket::empty()
                 }
-            },
+            }
             _ => CheckedPacket::empty(),
         })?;
     }

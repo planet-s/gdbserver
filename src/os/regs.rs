@@ -65,6 +65,7 @@ pub struct Registers {
 impl Registers {
     // The following sadly assume the endianness in order to only read
     // 10 bits in the st* stuff instead of the full 16.
+    #[rustfmt::skip] // formatting can only make this horrible code look worse
     pub fn decode(mut input: &[u8]) -> Result<Self> {
         let mut byte = || -> Result<u8> {
             let hex = input.get(..2).ok_or("Unexpected EOF decoding registers")?;
@@ -132,6 +133,7 @@ impl Registers {
             mxcsr: Some(u32::from_le_bytes([byte()?, byte()?, byte()?, byte()?])),
         })
     }
+    #[rustfmt::skip] // formatting can only make this horrible code look worse
     pub fn encode(&self, output: &mut Vec<u8>) -> Result<()> {
         let mut write = |slice: Option<&[u8]>, len: usize| {
             if let Some(slice) = slice {
