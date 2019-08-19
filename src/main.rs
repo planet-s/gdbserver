@@ -116,6 +116,24 @@ fn main() -> Result<()> {
                 }
                 CheckedPacket::from_data(Kind::Packet, out)
             },
+            Some(b'X') => {
+                let data = &packet.data[1..];
+                let sep1 = memchr::memchr(b',', &data).ok_or("gdb didn't send a memory length")?;
+
+                let (addr, rest) = data.split_at(sep1);
+                let sep2 = memchr::memchr(b':', &rest).ok_or("gdb didn't send memory content")?;
+                let (_, content) = rest.split_at(sep2);
+
+                let addr = usize::from_str_radix(std::str::from_utf8(&addr)?, 16)?;
+                // let len = usize::from_str_radix(std::str::from_utf8(&len[1..])?, 16)?;
+
+                let mut out = Vec::new();
+                match tracee.setmem(&content[1..], addr) {
+                    Ok(()) => write!(out, "OK").unwrap(),
+                    Err(errno) => write!(out, "E{:02X}", errno).unwrap(),
+                }
+                CheckedPacket::from_data(Kind::Packet, out)
+            },
             Some(b'v') => {
                 // if packet.data[1..].starts_with(b"Run") {
                 //     let mut cursor = &packet.data[1..];

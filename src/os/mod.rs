@@ -11,10 +11,31 @@ mod sys;
 pub use regs::Registers;
 pub use sys::Os;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Status {
     Exited(i32),
     Signaled(i32),
     Stopped(i32),
+}
+impl Status {
+    pub fn is_exited(&self) -> bool {
+        match self {
+            Status::Exited(_) => true,
+            _ => false
+        }
+    }
+    pub fn is_signaled(&self) -> bool {
+        match self {
+            Status::Signaled(_) => true,
+            _ => false
+        }
+    }
+    pub fn is_stopped(&self) -> bool {
+        match self {
+            Status::Stopped(_) => true,
+            _ => false
+        }
+    }
 }
 
 pub trait Target: Sized {
@@ -37,24 +58,20 @@ pub trait Target: Sized {
     fn setmem(&mut self, src: &[u8], dest: usize) -> Result<(), i32>;
 
     /// Single-step one instruction, return instruction pointer
-    fn step(&mut self, signal: Option<u8>) -> Result<u64>;
+    fn step(&mut self, signal: Option<u8>) -> Result<Option<u64>>;
 
     /// Resume execution while instruction pointer is inside the range
-    fn resume<R>(&mut self, range: R) -> Result<u64>
+    fn resume<R>(&mut self, range: R) -> Result<()>
         where R: RangeBounds<u64>
     {
-        let mut last = None;
         loop {
             let rip = self.step(None)?;
-            println!("{:X}", rip);
-            // Break if outside the range or if in what appears to be
-            // an infinite loop? Somehow this seems to sometimes occur
-            // and I don't know what it means
-            if !range.contains(&rip) || last == Some(rip) {
-                break Ok(rip);
+            println!("{:X?}", rip);
+            if rip.map(|rip| !range.contains(&rip)).unwrap_or(true) {
+                break;
             }
-            last = Some(rip);
         }
+        Ok(())
     }
 
     /// Continue execution until signal or other breakpoint

@@ -35,6 +35,42 @@ macro_rules! ce {
     }}
 }
 
+fn getmem<G, E>(mut src: usize, dest: &mut [u8], mut get: G) -> Result<usize, E>
+    where G: FnMut(usize) -> Result<usize, E>
+{
+    for chunk in dest.chunks_mut(mem::size_of::<usize>()) {
+        let bytes = get(src)?.to_ne_bytes();
+        chunk.copy_from_slice(&bytes[..chunk.len()]);
+
+        src += mem::size_of::<usize>();
+    }
+    Ok(dest.len())
+}
+fn setmem<G, S, E>(src: &[u8], mut dest: usize, mut get: G, mut set: S) -> Result<(), E>
+where
+    G: FnMut(usize) -> Result<usize, E>,
+    S: FnMut(usize, usize) -> Result<(), E>,
+{
+    let mut iter = src.chunks_exact(mem::size_of::<usize>());
+
+    for chunk in iter.by_ref() {
+        let mut bytes = [0; mem::size_of::<usize>()];
+        bytes.copy_from_slice(chunk);
+        let word = usize::from_ne_bytes(bytes);
+        set(dest, word)?;
+
+        dest += mem::size_of::<usize>();
+    }
+
+    let mut bytes = get(dest)?.to_ne_bytes();
+    let rest = iter.remainder();
+    bytes[..rest.len()].copy_from_slice(rest);
+    let word = usize::from_ne_bytes(bytes);
+    set(dest, word)?;
+
+    Ok(())
+}
+
 impl super::Target for Os {
     fn new(program: String, args: Vec<String>) -> Result<Self> {
         let program = CString::new(program)?.into_raw();
@@ -233,47 +269,46 @@ impl super::Target for Os {
         float.xmm_space[14] = registers.xmm14.map(|r| r as _).unwrap_or(float.xmm_space[14]);
         float.xmm_space[15] = registers.xmm15.map(|r| r as _).unwrap_or(float.xmm_space[15]);
 
+        unsafe {
+            ce!(libc::ptrace(libc::PTRACE_SETREGS, self.pid, 0, &int));
+            ce!(libc::ptrace(libc::PTRACE_SETFPREGS, self.pid, 0, &float));
+        }
+
         Ok(())
     }
 
-    fn getmem(&mut self, mut src: usize, dest: &mut [u8]) -> Result<usize, i32> {
+    fn getmem(&mut self, src: usize, dest: &mut [u8]) -> Result<usize, i32> {
         // TODO: Don't report errors when able to read part of requested?
         // Also implement this in the Redox kernel perhaps
-        for dest in dest.chunks_mut(mem::size_of::<usize>()) {
-            unsafe {
-                let word = ce!(libc::ptrace(libc::PTRACE_PEEKDATA, self.pid, src));
-
-                let bytes = word.to_ne_bytes();
-                dest.copy_from_slice(&bytes[..dest.len()]);
-                src += 1;
-            }
-        }
-        Ok(dest.len())
+        getmem(
+            src,
+            dest,
+            |addr| unsafe { Ok(ce!(libc::ptrace(libc::PTRACE_PEEKDATA, self.pid, addr)) as usize) },
+        )
     }
 
-    fn setmem(&mut self, src: &[u8], mut dest: usize) -> Result<(), i32> {
-        for src in src.chunks(mem::size_of::<usize>()) {
-            unsafe {
-                let word = ce!(libc::ptrace(libc::PTRACE_PEEKDATA, self.pid, dest));
-
-                let mut bytes = word.to_ne_bytes();
-                bytes[..src.len()].copy_from_slice(src);
-                dest += 1;
-                let word = usize::from_ne_bytes(bytes);
-
-                libc::ptrace(libc::PTRACE_POKEDATA, self.pid, dest, word);
-            }
-        }
-        Ok(())
+    fn setmem(&mut self, src: &[u8], dest: usize) -> Result<(), i32> {
+        println!("Writing {:02X?} to address {:X}", src, dest);
+        setmem(
+            src,
+            dest,
+            |addr| unsafe { Ok(ce!(libc::ptrace(libc::PTRACE_PEEKDATA, self.pid, addr)) as usize) },
+            |addr, word| unsafe { ce!(libc::ptrace(libc::PTRACE_POKEDATA, self.pid, addr, word)); Ok(()) }
+        )
     }
 
-    fn step(&mut self, signal: Option<u8>) -> Result<u64> {
+    fn step(&mut self, signal: Option<u8>) -> Result<Option<u64>> {
         unsafe {
             re!(libc::ptrace(libc::PTRACE_SINGLESTEP, self.pid, 0, signal.unwrap_or(0) as libc::c_uint));
             re!(libc::waitpid(self.pid, &mut self.last_status, 0));
 
-            let rip = re!(libc::ptrace(libc::PTRACE_PEEKUSER, self.pid, libc::RIP as usize * mem::size_of::<usize>()));
-            Ok(rip as u64)
+            Ok(if libc::WIFSTOPPED(self.last_status) && libc::WSTOPSIG(self.last_status) == libc::SIGTRAP {
+                let rip = re!(libc::ptrace(libc::PTRACE_PEEKUSER, self.pid, libc::RIP as usize * mem::size_of::<usize>()));
+                Some(rip as u64)
+            } else {
+                dbg!(self.status());
+                None
+            })
         }
     }
 
@@ -290,5 +325,51 @@ impl Drop for Os {
         unsafe {
             libc::kill(self.pid, libc::SIGTERM);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        cell::Cell,
+        mem,
+    };
+
+    #[test]
+    fn getmem() {
+        const SOURCE: &[u8] = b"testing one two three";
+        let mut dest = [0; 9];
+        super::getmem(
+            3,
+            &mut dest,
+            |addr| -> Result<usize, ()> {
+                let mut bytes = [0; mem::size_of::<usize>()];
+                bytes.copy_from_slice(&SOURCE[addr..addr+mem::size_of::<usize>()]);
+                Ok(usize::from_ne_bytes(bytes))
+            }
+        ).unwrap();
+        assert_eq!(&dest, b"ting one ");
+    }
+    #[test]
+    fn setmem() {
+        let source = Cell::new(*b"testing one two three");
+        let dest = b"XXXXXXXXX";
+        super::setmem(
+            dest,
+            3,
+            |addr| -> Result<usize, ()> {
+                let mut bytes = [0; mem::size_of::<usize>()];
+                bytes.copy_from_slice(&source.get()[addr..addr+mem::size_of::<usize>()]);
+                Ok(usize::from_ne_bytes(bytes))
+            },
+            |addr, word| -> Result<(), ()> {
+                let mut slice = source.get();
+                slice[addr..addr+mem::size_of::<usize>()]
+                    .copy_from_slice(&word.to_ne_bytes());
+                source.set(slice);
+                Ok(())
+            },
+        ).unwrap();
+        assert_eq!(&source.get(), b"tesXXXXXXXXXtwo three");
     }
 }
