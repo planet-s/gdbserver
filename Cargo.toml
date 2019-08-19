@@ -1,0 +1,13 @@
+[package]
+name = "gdbserver"
+version = "0.1.0"
+authors = ["jD91mZM2 <me@krake.one>"]
+edition = "2018"
+
+[dependencies]
+gdb-protocol = "0.1.0"
+# gdb-protocol = { git = "https://gitlab.redox-os.org/redox-os/gdb-protocol" }
+# gdb-protocol = { path = "../gdb-protocol/" }
+structopt = "0.2.18"
+memchr = "2.2.1"
+libc = "0.2.62"
