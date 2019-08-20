@@ -191,9 +191,8 @@ impl super::Target for Os {
         registers.fs = Some(int.fs as _);
         registers.gs = Some(int.gs as _);
 
-        registers.fcw = Some(float.cwd as _);
+        registers.fctrl = Some(float.cwd as _);
         registers.fop = Some(float.fop as _);
-        registers.mxcsr = Some(float.mxcsr);
 
         registers.st0 = Some(float.st_space[0] as _);
         registers.st1 = Some(float.st_space[1] as _);
@@ -220,6 +219,11 @@ impl super::Target for Os {
         registers.xmm13 = Some(float.xmm_space[13] as _);
         registers.xmm14 = Some(float.xmm_space[14] as _);
         registers.xmm15 = Some(float.xmm_space[15] as _);
+
+        registers.mxcsr = Some(float.mxcsr);
+        registers.fs_base = Some(int.fs_base as _);
+        registers.gs_base = Some(int.gs_base as _);
+        registers.orig_rax = Some(int.orig_rax as _);
 
         Ok(registers)
     }
@@ -253,9 +257,8 @@ impl super::Target for Os {
         int.fs = registers.fs.map(|r| r as _).unwrap_or(int.fs);
         int.gs = registers.gs.map(|r| r as _).unwrap_or(int.gs);
 
-        float.cwd = registers.fcw.map(|r| r as _).unwrap_or(float.cwd);
+        float.cwd = registers.fctrl.map(|r| r as _).unwrap_or(float.cwd);
         float.fop = registers.fop.map(|r| r as _).unwrap_or(float.fop);
-        float.mxcsr = registers.mxcsr.unwrap_or(float.mxcsr);
 
         float.st_space[0] = registers.st0.map(|r| r as _).unwrap_or(float.st_space[0]);
         float.st_space[1] = registers.st1.map(|r| r as _).unwrap_or(float.st_space[1]);
@@ -300,6 +303,11 @@ impl super::Target for Os {
             .xmm15
             .map(|r| r as _)
             .unwrap_or(float.xmm_space[15]);
+
+        float.mxcsr = registers.mxcsr.unwrap_or(float.mxcsr);
+        int.fs_base = registers.fs_base.map(|r| r as _).unwrap_or(int.fs_base);
+        int.gs_base = registers.gs_base.map(|r| r as _).unwrap_or(int.gs_base);
+        int.orig_rax = registers.orig_rax.map(|r| r as _).unwrap_or(int.orig_rax);
 
         unsafe {
             ce!(libc::ptrace(libc::PTRACE_SETREGS, self.pid, 0, &int));

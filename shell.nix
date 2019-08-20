@@ -2,10 +2,15 @@
 
 let
   gdb-init = pkgs.writers.writeBashBin "gdb" ''
-    ${pkgs.gdb}/bin/gdb "$@" \
+    ${pkgs.gdb}/bin/gdb \
       -ex "set tdesc filename ${./target-desc.xml}" \
-      -ex "set debug remote 1"
+      "$@"
+  '';
+  gdb-test = pkgs.writers.writeBashBin "gdb-test" ''
+    ${gdb-init}/bin/gdb \
+      -ex "target remote :64126" \
+      "$@"
   '';
 in pkgs.mkShell {
-  nativeBuildInputs = [ gdb-init ];
+  nativeBuildInputs = [ gdb-init gdb-test ];
 }

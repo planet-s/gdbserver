@@ -2,7 +2,9 @@
 <!DOCTYPE target SYSTEM "gdb-target.dtd">
 <target version="1.0">
   <architecture>i386:x86-64</architecture>
+  <!-- Gotten from gnu-binutils/gdb/regformats/i386/amd64-linux.dat -->
   <reg name="rax" bitsize="64" save-restore="no" type="int" group="general" />
+  <reg name="rax" bitsize="64" save-restore="yes" type="int" group="general" />
   <reg name="rbx" bitsize="64" save-restore="yes" type="int" group="general" />
   <reg name="rcx" bitsize="64" save-restore="yes" type="int" group="general" />
   <reg name="rdx" bitsize="64" save-restore="yes" type="int" group="general" />
@@ -26,21 +28,21 @@
   <reg name="es" bitsize="32" save-restore="yes" type="int" group="general" />
   <reg name="fs" bitsize="32" save-restore="yes" type="int" group="general" />
   <reg name="gs" bitsize="32" save-restore="yes" type="int" group="general" />
-  <reg name="st0" bitsize="128" save-restore="yes" type="int" group="general" />
-  <reg name="st1" bitsize="128" save-restore="yes" type="int" group="general" />
-  <reg name="st2" bitsize="128" save-restore="yes" type="int" group="general" />
-  <reg name="st3" bitsize="128" save-restore="yes" type="int" group="general" />
-  <reg name="st4" bitsize="128" save-restore="yes" type="int" group="general" />
-  <reg name="st5" bitsize="128" save-restore="yes" type="int" group="general" />
-  <reg name="st6" bitsize="128" save-restore="yes" type="int" group="general" />
-  <reg name="st7" bitsize="128" save-restore="yes" type="int" group="general" />
-  <reg name="fcw" bitsize="32" save-restore="yes" type="float" group="general" />
+  <reg name="st0" bitsize="80" save-restore="yes" type="float" group="general" />
+  <reg name="st1" bitsize="80" save-restore="yes" type="float" group="general" />
+  <reg name="st2" bitsize="80" save-restore="yes" type="float" group="general" />
+  <reg name="st3" bitsize="80" save-restore="yes" type="float" group="general" />
+  <reg name="st4" bitsize="80" save-restore="yes" type="float" group="general" />
+  <reg name="st5" bitsize="80" save-restore="yes" type="float" group="general" />
+  <reg name="st6" bitsize="80" save-restore="yes" type="float" group="general" />
+  <reg name="st7" bitsize="80" save-restore="yes" type="float" group="general" />
+  <reg name="fctrl" bitsize="32" save-restore="yes" type="float" group="general" />
   <reg name="fstat" bitsize="32" save-restore="yes" type="float" group="general" />
   <reg name="ftag" bitsize="32" save-restore="yes" type="float" group="general" />
   <reg name="fiseg" bitsize="32" save-restore="yes" type="float" group="general" />
-  <reg name="fiofs" bitsize="32" save-restore="yes" type="float" group="general" />
+  <reg name="fioff" bitsize="32" save-restore="yes" type="float" group="general" />
   <reg name="foseg" bitsize="32" save-restore="yes" type="float" group="general" />
-  <reg name="foofs" bitsize="32" save-restore="yes" type="float" group="general" />
+  <reg name="fooff" bitsize="32" save-restore="yes" type="float" group="general" />
   <reg name="fop" bitsize="32" save-restore="yes" type="float" group="general" />
   <reg name="xmm0" bitsize="128" save-restore="yes" type="float" group="general" />
   <reg name="xmm1" bitsize="128" save-restore="yes" type="float" group="general" />
@@ -58,5 +60,8 @@
   <reg name="xmm13" bitsize="128" save-restore="yes" type="float" group="general" />
   <reg name="xmm14" bitsize="128" save-restore="yes" type="float" group="general" />
   <reg name="xmm15" bitsize="128" save-restore="yes" type="float" group="general" />
-  <reg name="mxcsr" bitsize="128" save-restore="yes" type="float" group="general" />
+  <reg name="mxcsr" bitsize="32" save-restore="yes" type="float" group="general" />
+  <reg name="orig_rax" bitsize="64" save-restore="yes" type="int" group="general" />
+  <reg name="fs_base" bitsize="64" save-restore="yes" type="int" group="general" />
+  <reg name="gs_base" bitsize="64" save-restore="yes" type="int" group="general" />
 </target>

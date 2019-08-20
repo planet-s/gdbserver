@@ -4,6 +4,7 @@ use std::io::prelude::*;
 
 #[derive(Default)]
 pub struct Registers {
+    // Gotten from gnu-binutils/gdb/regformats/i386/amd64-linux.dat
     pub rax: Option<u64>,
     pub rbx: Option<u64>,
     pub rcx: Option<u64>,
@@ -36,13 +37,13 @@ pub struct Registers {
     pub st5: Option<u128>,
     pub st6: Option<u128>,
     pub st7: Option<u128>,
-    pub fcw: Option<u32>,
+    pub fctrl: Option<u32>,
     pub fstat: Option<u32>,
     pub ftag: Option<u32>,
     pub fiseg: Option<u32>,
-    pub fiofs: Option<u32>,
+    pub fioff: Option<u32>,
     pub foseg: Option<u32>,
-    pub foofs: Option<u32>,
+    pub fooff: Option<u32>,
     pub fop: Option<u32>,
     pub xmm0: Option<u128>,
     pub xmm1: Option<u128>,
@@ -61,6 +62,9 @@ pub struct Registers {
     pub xmm14: Option<u128>,
     pub xmm15: Option<u128>,
     pub mxcsr: Option<u32>,
+    pub orig_rax: Option<u64>,
+    pub fs_base: Option<u64>,
+    pub gs_base: Option<u64>,
 }
 impl Registers {
     // The following sadly assume the endianness in order to only read
@@ -106,13 +110,13 @@ impl Registers {
             st5: Some(u128::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, 0, 0, 0, 0, 0, 0])),
             st6: Some(u128::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, 0, 0, 0, 0, 0, 0])),
             st7: Some(u128::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, 0, 0, 0, 0, 0, 0])),
-            fcw: Some(u32::from_le_bytes([byte()?, byte()?, byte()?, byte()?])),
+            fctrl: Some(u32::from_le_bytes([byte()?, byte()?, byte()?, byte()?])),
             fstat: Some(u32::from_le_bytes([byte()?, byte()?, byte()?, byte()?])),
             ftag: Some(u32::from_le_bytes([byte()?, byte()?, byte()?, byte()?])),
             fiseg: Some(u32::from_le_bytes([byte()?, byte()?, byte()?, byte()?])),
-            fiofs: Some(u32::from_le_bytes([byte()?, byte()?, byte()?, byte()?])),
+            fioff: Some(u32::from_le_bytes([byte()?, byte()?, byte()?, byte()?])),
             foseg: Some(u32::from_le_bytes([byte()?, byte()?, byte()?, byte()?])),
-            foofs: Some(u32::from_le_bytes([byte()?, byte()?, byte()?, byte()?])),
+            fooff: Some(u32::from_le_bytes([byte()?, byte()?, byte()?, byte()?])),
             fop: Some(u32::from_le_bytes([byte()?, byte()?, byte()?, byte()?])),
             xmm0: Some(u128::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
             xmm1: Some(u128::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
@@ -131,6 +135,9 @@ impl Registers {
             xmm14: Some(u128::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
             xmm15: Some(u128::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
             mxcsr: Some(u32::from_le_bytes([byte()?, byte()?, byte()?, byte()?])),
+            orig_rax: Some(u64::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
+            fs_base: Some(u64::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
+            gs_base: Some(u64::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
         })
     }
     #[rustfmt::skip] // formatting can only make this horrible code look worse
@@ -182,13 +189,13 @@ impl Registers {
         write(self.st5.map(u128::to_le_bytes).as_ref().map(|s| &s[..10]), 10);
         write(self.st6.map(u128::to_le_bytes).as_ref().map(|s| &s[..10]), 10);
         write(self.st7.map(u128::to_le_bytes).as_ref().map(|s| &s[..10]), 10);
-        write(self.fcw.map(u32::to_le_bytes).as_ref().map(|s| &s[..]), 4);
+        write(self.fctrl.map(u32::to_le_bytes).as_ref().map(|s| &s[..]), 4);
         write(self.fstat.map(u32::to_le_bytes).as_ref().map(|s| &s[..]), 4);
         write(self.ftag.map(u32::to_le_bytes).as_ref().map(|s| &s[..]), 4);
         write(self.fiseg.map(u32::to_le_bytes).as_ref().map(|s| &s[..]), 4);
-        write(self.fiofs.map(u32::to_le_bytes).as_ref().map(|s| &s[..]), 4);
+        write(self.fioff.map(u32::to_le_bytes).as_ref().map(|s| &s[..]), 4);
         write(self.foseg.map(u32::to_le_bytes).as_ref().map(|s| &s[..]), 4);
-        write(self.foofs.map(u32::to_le_bytes).as_ref().map(|s| &s[..]), 4);
+        write(self.fooff.map(u32::to_le_bytes).as_ref().map(|s| &s[..]), 4);
         write(self.fop.map(u32::to_le_bytes).as_ref().map(|s| &s[..]), 4);
         write(self.xmm0.map(u128::to_le_bytes).as_ref().map(|s| &s[..]), 16);
         write(self.xmm1.map(u128::to_le_bytes).as_ref().map(|s| &s[..]), 16);
@@ -207,6 +214,9 @@ impl Registers {
         write(self.xmm14.map(u128::to_le_bytes).as_ref().map(|s| &s[..]), 16);
         write(self.xmm15.map(u128::to_le_bytes).as_ref().map(|s| &s[..]), 16);
         write(self.mxcsr.map(u32::to_le_bytes).as_ref().map(|s| &s[..]), 4);
+        write(self.orig_rax.map(u64::to_le_bytes).as_ref().map(|s| &s[..]), 8);
+        write(self.fs_base.map(u64::to_le_bytes).as_ref().map(|s| &s[..]), 8);
+        write(self.gs_base.map(u64::to_le_bytes).as_ref().map(|s| &s[..]), 8);
         Ok(())
     }
 }

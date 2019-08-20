@@ -9,4 +9,4 @@ Linux somewhat works.
 
 Current status:
 
-![Screenshot of debugging with GDB](https://i.imgur.com/LVCdO1S.png)
+![Screenshot of debugging with GDB](https://i.imgur.com/Xuke1du.png)
