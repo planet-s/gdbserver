@@ -1,16 +1,19 @@
-use super::{Registers, Status};
+use super::Registers;
 use crate::Result;
 
 use std::{
+    cell::Cell,
     ffi::CString,
     io, iter,
     mem::{self, MaybeUninit},
     ptr,
 };
 
+use gdb_remote_protocol::StopReason;
+
 pub struct Os {
     pid: libc::pid_t,
-    last_status: libc::c_int,
+    last_status: Cell<libc::c_int>,
 }
 
 // Handle error as Rust: Return an io::Error
@@ -122,27 +125,27 @@ impl super::Target for Os {
 
                 Ok(Os {
                     pid,
-                    last_status: status,
+                    last_status: Cell::from(status),
                 })
             }
         }
     }
 
-    fn status(&mut self) -> Status {
+    fn status(&self) -> StopReason {
         unsafe {
-            if libc::WIFEXITED(self.last_status) {
-                Status::Exited(libc::WEXITSTATUS(self.last_status))
-            } else if libc::WIFSIGNALED(self.last_status) {
-                Status::Signaled(libc::WTERMSIG(self.last_status))
-            } else if libc::WIFSTOPPED(self.last_status) {
-                Status::Stopped(libc::WSTOPSIG(self.last_status))
+            if libc::WIFEXITED(self.last_status.get()) {
+                StopReason::Exited(self.pid as _, libc::WEXITSTATUS(self.last_status.get()) as _)
+            } else if libc::WIFSIGNALED(self.last_status.get()) {
+                StopReason::ExitedWithSignal(self.pid as _, libc::WTERMSIG(self.last_status.get()) as _)
+            } else if libc::WIFSTOPPED(self.last_status.get()) {
+                StopReason::Signal(libc::WSTOPSIG(self.last_status.get()) as _)
             } else {
-                unimplemented!("TODO: Implement status {}", self.last_status);
+                unimplemented!("TODO: Implement status {}", self.last_status.get());
             }
         }
     }
 
-    fn getregs(&mut self) -> Result<Registers, i32> {
+    fn getregs(&self) -> Result<Registers, i32> {
         let int = unsafe {
             let mut int: MaybeUninit<libc::user_regs_struct> = MaybeUninit::uninit();
             ce!(libc::ptrace(
@@ -228,7 +231,7 @@ impl super::Target for Os {
         Ok(registers)
     }
 
-    fn setregs(&mut self, registers: &Registers) -> Result<(), i32> {
+    fn setregs(&self, registers: &Registers) -> Result<(), i32> {
         let mut int: libc::user_regs_struct = unsafe { MaybeUninit::zeroed().assume_init() };
         let mut float: libc::user_fpregs_struct = unsafe { MaybeUninit::zeroed().assume_init() };
 
@@ -317,7 +320,7 @@ impl super::Target for Os {
         Ok(())
     }
 
-    fn getmem(&mut self, src: usize, dest: &mut [u8]) -> Result<usize, i32> {
+    fn getmem(&self, src: usize, dest: &mut [u8]) -> Result<usize, i32> {
         // TODO: Don't report errors when able to read part of requested?
         // Also implement this in the Redox kernel perhaps
         getmem(src, dest, |addr| unsafe {
@@ -325,7 +328,7 @@ impl super::Target for Os {
         })
     }
 
-    fn setmem(&mut self, src: &[u8], dest: usize) -> Result<(), i32> {
+    fn setmem(&self, src: &[u8], dest: usize) -> Result<(), i32> {
         println!("Writing {:02X?} to address {:X}", src, dest);
         setmem(
             src,
@@ -338,7 +341,7 @@ impl super::Target for Os {
         )
     }
 
-    fn step(&mut self, signal: Option<u8>) -> Result<Option<u64>> {
+    fn step(&self, signal: Option<u8>) -> Result<Option<u64>> {
         unsafe {
             re!(libc::ptrace(
                 libc::PTRACE_SINGLESTEP,
@@ -346,11 +349,13 @@ impl super::Target for Os {
                 0,
                 signal.unwrap_or(0) as libc::c_uint
             ));
-            re!(libc::waitpid(self.pid, &mut self.last_status, 0));
+            let mut status = 0;
+            re!(libc::waitpid(self.pid, &mut status, 0));
+            self.last_status.set(status);
 
             Ok(
-                if libc::WIFSTOPPED(self.last_status)
-                    && libc::WSTOPSIG(self.last_status) == libc::SIGTRAP
+                if libc::WIFSTOPPED(self.last_status.get())
+                    && libc::WSTOPSIG(self.last_status.get()) == libc::SIGTRAP
                 {
                     let rip = re!(libc::ptrace(
                         libc::PTRACE_PEEKUSER,
@@ -366,7 +371,7 @@ impl super::Target for Os {
         }
     }
 
-    fn cont(&mut self, signal: Option<u8>) -> Result<()> {
+    fn cont(&self, signal: Option<u8>) -> Result<()> {
         unsafe {
             re!(libc::ptrace(
                 libc::PTRACE_CONT,
@@ -374,7 +379,9 @@ impl super::Target for Os {
                 0,
                 signal.unwrap_or(0) as libc::c_uint
             ));
-            re!(libc::waitpid(self.pid, &mut self.last_status, 0));
+            let mut status = 0;
+            re!(libc::waitpid(self.pid, &mut status, 0));
+            self.last_status.set(status);
         }
         Ok(())
     }
