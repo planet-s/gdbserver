@@ -1,9 +1,4 @@
-use crate::Result;
-
-use std::{
-    io::prelude::*,
-    iter,
-};
+use std::iter;
 
 #[derive(Default)]
 pub struct Registers {

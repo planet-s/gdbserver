@@ -4,13 +4,13 @@ use gdb_remote_protocol::{
     MemoryRegion,
     ProcessType,
     StopReason,
+    ThreadId,
+    VCont,
+    VContFeature,
 };
 use structopt::StructOpt;
 
-use std::{
-    net::{TcpListener, TcpStream},
-    io::prelude::*,
-};
+use std::{borrow::Cow, net::TcpListener};
 
 mod os;
 
@@ -27,43 +27,65 @@ struct Opt {
     args: Vec<String>,
 }
 
-pub type Result<T, E = Box<dyn std::error::Error>> = std::result::Result<T, E>;
+pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 pub struct App {
     tracee: Os,
 }
 impl Handler for App {
-    fn attached(&self, _pid: Option<u64>) -> Result<ProcessType, Error> {
+    fn attached(&self, _pid: Option<u64>) -> Result<ProcessType> {
         Ok(ProcessType::Created)
     }
-    fn halt_reason(&self) -> Result<StopReason, Error> {
+    fn halt_reason(&self) -> Result<StopReason> {
         Ok(self.tracee.status())
     }
-    fn read_general_registers(&self) -> Result<Vec<u8>, Error> {
-        let regs = self.tracee.getregs().map_err(|e| Error::Error(e as _))?;
+    fn read_general_registers(&self) -> Result<Vec<u8>> {
+        let regs = self.tracee.getregs()?;
 
         let mut bytes = Vec::new();
         regs.encode(&mut bytes);
 
         Ok(bytes)
     }
-    fn write_general_registers(&self, content: &[u8]) -> Result<(), Error> {
+    fn write_general_registers(&self, content: &[u8]) -> Result<()> {
         let regs = Registers::decode(content);
-        self.tracee.setregs(&regs).map_err(|e| Error::Error(e as _))?;
+        self.tracee.setregs(&regs)?;
         Ok(())
     }
-    fn read_memory(&self, region: MemoryRegion) -> Result<Vec<u8>, Error> {
+    fn read_memory(&self, region: MemoryRegion) -> Result<Vec<u8>> {
         let mut buf = vec![0; region.length as usize];
-        self.tracee.getmem(region.address as usize, &mut buf).map_err(|e| Error::Error(e as _))?;
+        self.tracee.getmem(region.address as usize, &mut buf)?;
         Ok(buf)
     }
-    fn write_memory(&self, address: u64, bytes: &[u8]) -> Result<(), Error> {
-        self.tracee.setmem(bytes, address as usize).map_err(|e| Error::Error(e as _))?;
+    fn write_memory(&self, address: u64, bytes: &[u8]) -> Result<()> {
+        self.tracee.setmem(bytes, address as usize)?;
         Ok(())
+    }
+    fn query_supported_vcont(&self) -> Result<Cow<'static, [VContFeature]>> {
+        Ok(Cow::Borrowed(&[
+            VContFeature::Continue, VContFeature::ContinueWithSignal,
+            VContFeature::Step, VContFeature::StepWithSignal,
+            VContFeature::RangeStep,
+        ]))
+    }
+    fn vcont(&self, actions: Vec<(VCont, Option<ThreadId>)>) -> Result<StopReason> {
+        if let Some((cmd, _id)) = actions.first() {
+            match *cmd {
+                VCont::Continue => { self.tracee.cont(None)?; },
+                VCont::ContinueWithSignal(signal) => { self.tracee.cont(Some(signal))?; },
+                VCont::Step => { self.tracee.step(None)?; },
+                VCont::StepWithSignal(signal) => { self.tracee.step(Some(signal))?; },
+                // std::ops::Range<T: Copy> should probably also be Copy, but it isn't.
+                VCont::RangeStep(ref range) => { self.tracee.resume(range.clone())?; },
+                _ => return Err(Error::Unimplemented),
+            }
+        }
+
+        Ok(self.tracee.status())
     }
 }
 
-fn main() -> Result<()> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut opt = Opt::from_args();
     opt.args.insert(0, opt.program.clone());
 
@@ -79,69 +101,6 @@ fn main() -> Result<()> {
     gdb_remote_protocol::process_packets_from(&mut reader, &mut writer, App {
         tracee,
     });
-
-    /*
-        stream.dispatch(&match packet.data.first() {
-            Some(b'v') => {
-                // if packet.data[1..].starts_with(b"Run") {
-                //     let mut cursor = &packet.data[1..];
-                //     loop {
-                //         let arg_end = memchr::memchr(b';', &cursor);
-                //         println!("Arg: {:?}", std::str::from_utf8(&cursor[..arg_end.unwrap_or_else(|| cursor.len())]));
-                //         match arg_end {
-                //             Some(arg_end) => cursor = &cursor[arg_end+1..],
-                //             None => break,
-                //         }
-                //     }
-                //     CheckedPacket::from_data(Kind::Packet, b"W00".to_vec())
-                if packet.data[1..].starts_with(b"Cont") {
-                    let data = &packet.data[1 + 4..];
-                    match data.first() {
-                        Some(b'?') => {
-                            CheckedPacket::from_data(Kind::Packet, b"vCont;s;c;S;C;r".to_vec())
-                        }
-                        Some(b';') => match data.get(1) {
-                            Some(b's') => {
-                                tracee.step(None)?;
-                                encode_status(&mut tracee)
-                            }
-                            Some(b'S') => {
-                                let slice = data.get(2..4).ok_or("gdb didn't send a signal")?;
-                                let signal = u8::from_str_radix(std::str::from_utf8(&slice)?, 16)?;
-                                tracee.step(Some(signal))?;
-                                encode_status(&mut tracee)
-                            }
-                            Some(b'c') => {
-                                tracee.cont(None)?;
-                                encode_status(&mut tracee)
-                            }
-                            Some(b'C') => {
-                                let slice = data.get(2..4).ok_or("gdb didn't send a signal")?;
-                                let signal = u8::from_str_radix(std::str::from_utf8(&slice)?, 16)?;
-                                tracee.cont(Some(signal))?;
-                                encode_status(&mut tracee)
-                            }
-                            Some(b'r') => {
-                                let data = &data[2..];
-
-                                let sep1 = memchr::memchr(b',', data)
-                                    .ok_or("gdb didn't send an end value")?;
-                                let (start, end) = data.split_at(sep1);
-                                let sep2 = memchr::memchr(b':', end).unwrap_or_else(|| end.len());
-
-                                let start = u64::from_str_radix(std::str::from_utf8(start)?, 16)?;
-                                let end =
-                                    u64::from_str_radix(std::str::from_utf8(&end[1..sep2])?, 16)?;
-
-                                tracee.resume(start..end)?;
-                                encode_status(&mut tracee)
-                            }
-                            _ => CheckedPacket::empty(),
-                        },
-                        _ => CheckedPacket::empty(),
-                    }
-    }
-    */
 
     Ok(())
 }

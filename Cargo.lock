@@ -42,17 +42,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "gdb-protocol"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "memchr 2.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "gdb-remote-protocol"
 version = "0.1.0"
-source = "git+https://github.com/luser/rust-gdb-remote-protocol#c3f773ba3b232376ef904b50859a946c23910571"
 dependencies = [
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "nom 3.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -64,8 +55,7 @@ dependencies = [
 name = "gdbserver"
 version = "0.1.0"
 dependencies = [
- "gdb-protocol 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "gdb-remote-protocol 0.1.0 (git+https://github.com/luser/rust-gdb-remote-protocol)",
+ "gdb-remote-protocol 0.1.0",
  "libc 0.2.62 (registry+https://github.com/rust-lang/crates.io-index)",
  "memchr 2.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "structopt 0.2.18 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -259,8 +249,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum bitflags 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3d155346769a6855b86399e9bc3814ab343cd3d62c7e985113d46a0ec3c281fd"
 "checksum cfg-if 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)" = "b486ce3ccf7ffd79fdeb678eac06a9e6c09fc88d33836340becb8fffe87c5e33"
 "checksum clap 2.33.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5067f5bb2d80ef5d68b4c87db81601f0b75bca627bc2ef76b141d7b846a3c6d9"
-"checksum gdb-protocol 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5b8b88b222a91266bb192222d46d0da29addbc423d0a9910aec233dce875eb6e"
-"checksum gdb-remote-protocol 0.1.0 (git+https://github.com/luser/rust-gdb-remote-protocol)" = "<none>"
 "checksum heck 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "20564e78d53d2bb135c343b3f47714a56af2061f1c928fdb541dc7b9fdd94205"
 "checksum libc 0.2.62 (registry+https://github.com/rust-lang/crates.io-index)" = "34fcd2c08d2f832f376f4173a231990fa5aef4e99fb569867318a227ef4c06ba"
 "checksum log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)" = "14b6052be84e6b71ab17edffc2eeabf5c2c3ae1fdb464aae35ac50c67a44e1f7"

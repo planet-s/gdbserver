@@ -15,22 +15,22 @@ pub use sys::Os;
 
 pub trait Target: Sized {
     /// Spawn a new tracee and return a tracer for it
-    fn new(program: String, args: Vec<String>) -> Result<Os>;
+    fn new(program: String, args: Vec<String>) -> Result<Os, Box<dyn std::error::Error>>;
 
     /// Get the last status of the tracee
     fn status(&self) -> StopReason;
 
     /// Read all the process register
-    fn getregs(&self) -> Result<Registers, i32>;
+    fn getregs(&self) -> Result<Registers>;
 
     /// Read all the process register
-    fn setregs(&self, regs: &Registers) -> Result<(), i32>;
+    fn setregs(&self, regs: &Registers) -> Result<()>;
 
     /// Read a region of memory from tracee
-    fn getmem(&self, src: usize, dest: &mut [u8]) -> Result<usize, i32>;
+    fn getmem(&self, src: usize, dest: &mut [u8]) -> Result<usize>;
 
     /// Read a region of memory from tracee
-    fn setmem(&self, src: &[u8], dest: usize) -> Result<(), i32>;
+    fn setmem(&self, src: &[u8], dest: usize) -> Result<()>;
 
     /// Single-step one instruction, return instruction pointer
     fn step(&self, signal: Option<u8>) -> Result<Option<u64>>;
