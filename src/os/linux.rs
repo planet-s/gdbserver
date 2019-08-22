@@ -143,9 +143,15 @@ impl super::Target for Os {
     fn status(&self) -> StopReason {
         unsafe {
             if libc::WIFEXITED(self.last_status.get()) {
-                StopReason::Exited(self.pid as _, libc::WEXITSTATUS(self.last_status.get()) as _)
+                StopReason::Exited(
+                    self.pid as _,
+                    libc::WEXITSTATUS(self.last_status.get()) as _,
+                )
             } else if libc::WIFSIGNALED(self.last_status.get()) {
-                StopReason::ExitedWithSignal(self.pid as _, libc::WTERMSIG(self.last_status.get()) as _)
+                StopReason::ExitedWithSignal(
+                    self.pid as _,
+                    libc::WTERMSIG(self.last_status.get()) as _,
+                )
             } else if libc::WIFSTOPPED(self.last_status.get()) {
                 StopReason::Signal(libc::WSTOPSIG(self.last_status.get()) as _)
             } else {

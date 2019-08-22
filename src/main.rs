@@ -1,12 +1,5 @@
 use gdb_remote_protocol::{
-    Error,
-    Handler,
-    MemoryRegion,
-    ProcessType,
-    StopReason,
-    ThreadId,
-    VCont,
-    VContFeature,
+    Error, Handler, MemoryRegion, ProcessType, StopReason, ThreadId, VCont, VContFeature,
 };
 use structopt::StructOpt;
 
@@ -63,20 +56,32 @@ impl Handler for App {
     }
     fn query_supported_vcont(&self) -> Result<Cow<'static, [VContFeature]>> {
         Ok(Cow::Borrowed(&[
-            VContFeature::Continue, VContFeature::ContinueWithSignal,
-            VContFeature::Step, VContFeature::StepWithSignal,
+            VContFeature::Continue,
+            VContFeature::ContinueWithSignal,
+            VContFeature::Step,
+            VContFeature::StepWithSignal,
             VContFeature::RangeStep,
         ]))
     }
     fn vcont(&self, actions: Vec<(VCont, Option<ThreadId>)>) -> Result<StopReason> {
         if let Some((cmd, _id)) = actions.first() {
             match *cmd {
-                VCont::Continue => { self.tracee.cont(None)?; },
-                VCont::ContinueWithSignal(signal) => { self.tracee.cont(Some(signal))?; },
-                VCont::Step => { self.tracee.step(None)?; },
-                VCont::StepWithSignal(signal) => { self.tracee.step(Some(signal))?; },
-                // std::ops::Range<T: Copy> should probably also be Copy, but it isn't.
-                VCont::RangeStep(ref range) => { self.tracee.resume(range.clone())?; },
+                VCont::Continue => {
+                    self.tracee.cont(None)?;
+                }
+                VCont::ContinueWithSignal(signal) => {
+                    self.tracee.cont(Some(signal))?;
+                }
+                VCont::Step => {
+                    self.tracee.step(None)?;
+                }
+                VCont::StepWithSignal(signal) => {
+                    self.tracee.step(Some(signal))?;
+                }
+                VCont::RangeStep(ref range) => {
+                    // std::ops::Range<T: Copy> should probably also be Copy, but it isn't.
+                    self.tracee.resume(range.clone())?;
+                }
                 _ => return Err(Error::Unimplemented),
             }
         }
@@ -98,9 +103,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let tracee = Os::new(opt.program, opt.args)?;
 
-    gdb_remote_protocol::process_packets_from(&mut reader, &mut writer, App {
-        tracee,
-    });
+    gdb_remote_protocol::process_packets_from(&mut reader, &mut writer, App { tracee });
 
     Ok(())
 }
