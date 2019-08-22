@@ -1,6 +1,4 @@
-use crate::Result;
-
-use std::io::prelude::*;
+use std::iter;
 
 #[derive(Default)]
 pub struct Registers {
@@ -70,91 +68,84 @@ impl Registers {
     // The following sadly assume the endianness in order to only read
     // 10 bits in the st* stuff instead of the full 16.
     #[rustfmt::skip] // formatting can only make this horrible code look worse
-    pub fn decode(mut input: &[u8]) -> Result<Self> {
-        let mut byte = || -> Result<u8> {
-            let hex = input.get(..2).ok_or("Unexpected EOF decoding registers")?;
-            input = &input[2..];
-            let hex = std::str::from_utf8(hex)?;
-            Ok(u8::from_str_radix(hex, 16)?)
+    pub fn decode(mut input: &[u8]) -> Self {
+        let mut byte = || -> u8 {
+            let b = input[0];
+            input = &input[1..];
+            b
         };
-        Ok(Self {
-            rax: Some(u64::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
-            rbx: Some(u64::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
-            rcx: Some(u64::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
-            rdx: Some(u64::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
-            rsi: Some(u64::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
-            rdi: Some(u64::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
-            rbp: Some(u64::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
-            rsp: Some(u64::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
-            r8: Some(u64::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
-            r9: Some(u64::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
-            r10: Some(u64::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
-            r11: Some(u64::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
-            r12: Some(u64::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
-            r13: Some(u64::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
-            r14: Some(u64::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
-            r15: Some(u64::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
-            rip: Some(u64::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
-            eflags: Some(u32::from_le_bytes([byte()?, byte()?, byte()?, byte()?])),
-            cs: Some(u32::from_le_bytes([byte()?, byte()?, byte()?, byte()?])),
-            ss: Some(u32::from_le_bytes([byte()?, byte()?, byte()?, byte()?])),
-            ds: Some(u32::from_le_bytes([byte()?, byte()?, byte()?, byte()?])),
-            es: Some(u32::from_le_bytes([byte()?, byte()?, byte()?, byte()?])),
-            fs: Some(u32::from_le_bytes([byte()?, byte()?, byte()?, byte()?])),
-            gs: Some(u32::from_le_bytes([byte()?, byte()?, byte()?, byte()?])),
-            st0: Some(u128::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, 0, 0, 0, 0, 0, 0])),
-            st1: Some(u128::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, 0, 0, 0, 0, 0, 0])),
-            st2: Some(u128::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, 0, 0, 0, 0, 0, 0])),
-            st3: Some(u128::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, 0, 0, 0, 0, 0, 0])),
-            st4: Some(u128::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, 0, 0, 0, 0, 0, 0])),
-            st5: Some(u128::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, 0, 0, 0, 0, 0, 0])),
-            st6: Some(u128::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, 0, 0, 0, 0, 0, 0])),
-            st7: Some(u128::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, 0, 0, 0, 0, 0, 0])),
-            fctrl: Some(u32::from_le_bytes([byte()?, byte()?, byte()?, byte()?])),
-            fstat: Some(u32::from_le_bytes([byte()?, byte()?, byte()?, byte()?])),
-            ftag: Some(u32::from_le_bytes([byte()?, byte()?, byte()?, byte()?])),
-            fiseg: Some(u32::from_le_bytes([byte()?, byte()?, byte()?, byte()?])),
-            fioff: Some(u32::from_le_bytes([byte()?, byte()?, byte()?, byte()?])),
-            foseg: Some(u32::from_le_bytes([byte()?, byte()?, byte()?, byte()?])),
-            fooff: Some(u32::from_le_bytes([byte()?, byte()?, byte()?, byte()?])),
-            fop: Some(u32::from_le_bytes([byte()?, byte()?, byte()?, byte()?])),
-            xmm0: Some(u128::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
-            xmm1: Some(u128::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
-            xmm2: Some(u128::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
-            xmm3: Some(u128::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
-            xmm4: Some(u128::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
-            xmm5: Some(u128::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
-            xmm6: Some(u128::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
-            xmm7: Some(u128::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
-            xmm8: Some(u128::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
-            xmm9: Some(u128::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
-            xmm10: Some(u128::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
-            xmm11: Some(u128::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
-            xmm12: Some(u128::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
-            xmm13: Some(u128::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
-            xmm14: Some(u128::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
-            xmm15: Some(u128::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
-            mxcsr: Some(u32::from_le_bytes([byte()?, byte()?, byte()?, byte()?])),
-            orig_rax: Some(u64::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
-            fs_base: Some(u64::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
-            gs_base: Some(u64::from_le_bytes([byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?, byte()?])),
-        })
+        Self {
+            rax: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
+            rbx: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
+            rcx: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
+            rdx: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
+            rsi: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
+            rdi: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
+            rbp: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
+            rsp: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
+            r8: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
+            r9: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
+            r10: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
+            r11: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
+            r12: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
+            r13: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
+            r14: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
+            r15: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
+            rip: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
+            eflags: Some(u32::from_le_bytes([byte(), byte(), byte(), byte()])),
+            cs: Some(u32::from_le_bytes([byte(), byte(), byte(), byte()])),
+            ss: Some(u32::from_le_bytes([byte(), byte(), byte(), byte()])),
+            ds: Some(u32::from_le_bytes([byte(), byte(), byte(), byte()])),
+            es: Some(u32::from_le_bytes([byte(), byte(), byte(), byte()])),
+            fs: Some(u32::from_le_bytes([byte(), byte(), byte(), byte()])),
+            gs: Some(u32::from_le_bytes([byte(), byte(), byte(), byte()])),
+            st0: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), 0, 0, 0, 0, 0, 0])),
+            st1: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), 0, 0, 0, 0, 0, 0])),
+            st2: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), 0, 0, 0, 0, 0, 0])),
+            st3: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), 0, 0, 0, 0, 0, 0])),
+            st4: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), 0, 0, 0, 0, 0, 0])),
+            st5: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), 0, 0, 0, 0, 0, 0])),
+            st6: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), 0, 0, 0, 0, 0, 0])),
+            st7: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), 0, 0, 0, 0, 0, 0])),
+            fctrl: Some(u32::from_le_bytes([byte(), byte(), byte(), byte()])),
+            fstat: Some(u32::from_le_bytes([byte(), byte(), byte(), byte()])),
+            ftag: Some(u32::from_le_bytes([byte(), byte(), byte(), byte()])),
+            fiseg: Some(u32::from_le_bytes([byte(), byte(), byte(), byte()])),
+            fioff: Some(u32::from_le_bytes([byte(), byte(), byte(), byte()])),
+            foseg: Some(u32::from_le_bytes([byte(), byte(), byte(), byte()])),
+            fooff: Some(u32::from_le_bytes([byte(), byte(), byte(), byte()])),
+            fop: Some(u32::from_le_bytes([byte(), byte(), byte(), byte()])),
+            xmm0: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
+            xmm1: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
+            xmm2: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
+            xmm3: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
+            xmm4: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
+            xmm5: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
+            xmm6: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
+            xmm7: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
+            xmm8: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
+            xmm9: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
+            xmm10: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
+            xmm11: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
+            xmm12: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
+            xmm13: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
+            xmm14: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
+            xmm15: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
+            mxcsr: Some(u32::from_le_bytes([byte(), byte(), byte(), byte()])),
+            orig_rax: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
+            fs_base: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
+            gs_base: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
+        }
     }
     #[rustfmt::skip] // formatting can only make this horrible code look worse
-    pub fn encode(&self, output: &mut Vec<u8>) -> Result<()> {
+    pub fn encode(&self, output: &mut Vec<u8>) {
         let mut write = |slice: Option<&[u8]>, len: usize| {
+            output.reserve(len);
             if let Some(slice) = slice {
                 assert_eq!(slice.len(), len);
-                output.reserve(slice.len() * 2);
-                for byte in slice {
-                    write!(output, "{:02X}", byte).unwrap();
-                }
+                output.extend_from_slice(slice);
             } else {
-                output.reserve(len * 2);
-                for _ in 0..len {
-                    output.push(b'x');
-                    output.push(b'x');
-                }
+                output.extend(iter::repeat(0).take(len));
             }
         };
         write(self.rax.map(u64::to_le_bytes).as_ref().map(|s| &s[..]), 8);
@@ -217,6 +208,5 @@ impl Registers {
         write(self.orig_rax.map(u64::to_le_bytes).as_ref().map(|s| &s[..]), 8);
         write(self.fs_base.map(u64::to_le_bytes).as_ref().map(|s| &s[..]), 8);
         write(self.gs_base.map(u64::to_le_bytes).as_ref().map(|s| &s[..]), 8);
-        Ok(())
     }
 }

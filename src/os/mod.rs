@@ -2,6 +2,8 @@ use crate::Result;
 
 use std::ops::RangeBounds;
 
+use gdb_remote_protocol::StopReason;
+
 mod regs;
 
 #[cfg(target_os = "linux")]
@@ -11,57 +13,30 @@ mod sys;
 pub use regs::Registers;
 pub use sys::Os;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum Status {
-    Exited(i32),
-    Signaled(i32),
-    Stopped(i32),
-}
-impl Status {
-    pub fn is_exited(&self) -> bool {
-        match self {
-            Status::Exited(_) => true,
-            _ => false,
-        }
-    }
-    pub fn is_signaled(&self) -> bool {
-        match self {
-            Status::Signaled(_) => true,
-            _ => false,
-        }
-    }
-    pub fn is_stopped(&self) -> bool {
-        match self {
-            Status::Stopped(_) => true,
-            _ => false,
-        }
-    }
-}
-
 pub trait Target: Sized {
     /// Spawn a new tracee and return a tracer for it
-    fn new(program: String, args: Vec<String>) -> Result<Os>;
+    fn new(program: String, args: Vec<String>) -> Result<Os, Box<dyn std::error::Error>>;
 
     /// Get the last status of the tracee
-    fn status(&mut self) -> Status;
+    fn status(&self) -> StopReason;
 
     /// Read all the process register
-    fn getregs(&mut self) -> Result<Registers, i32>;
+    fn getregs(&self) -> Result<Registers>;
 
     /// Read all the process register
-    fn setregs(&mut self, regs: &Registers) -> Result<(), i32>;
+    fn setregs(&self, regs: &Registers) -> Result<()>;
 
     /// Read a region of memory from tracee
-    fn getmem(&mut self, src: usize, dest: &mut [u8]) -> Result<usize, i32>;
+    fn getmem(&self, src: usize, dest: &mut [u8]) -> Result<usize>;
 
     /// Read a region of memory from tracee
-    fn setmem(&mut self, src: &[u8], dest: usize) -> Result<(), i32>;
+    fn setmem(&self, src: &[u8], dest: usize) -> Result<()>;
 
     /// Single-step one instruction, return instruction pointer
-    fn step(&mut self, signal: Option<u8>) -> Result<Option<u64>>;
+    fn step(&self, signal: Option<u8>) -> Result<Option<u64>>;
 
     /// Resume execution while instruction pointer is inside the range
-    fn resume<R>(&mut self, range: R) -> Result<()>
+    fn resume<R>(&self, range: R) -> Result<()>
     where
         R: RangeBounds<u64>,
     {
@@ -76,5 +51,5 @@ pub trait Target: Sized {
     }
 
     /// Continue execution until signal or other breakpoint
-    fn cont(&mut self, signal: Option<u8>) -> Result<()>;
+    fn cont(&self, signal: Option<u8>) -> Result<()>;
 }
