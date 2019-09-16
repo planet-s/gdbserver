@@ -160,6 +160,10 @@ impl super::Target for Os {
         }
     }
 
+    fn pid(&self) -> u32 {
+        return self.pid as _;
+    }
+
     fn getregs(&self) -> Result<Registers> {
         let int = unsafe {
             let mut int: MaybeUninit<libc::user_regs_struct> = MaybeUninit::uninit();
@@ -344,7 +348,6 @@ impl super::Target for Os {
     }
 
     fn setmem(&self, src: &[u8], dest: usize) -> Result<()> {
-        println!("Writing {:02X?} to address {:X}", src, dest);
         setmem(
             src,
             dest,
@@ -379,7 +382,6 @@ impl super::Target for Os {
                     ));
                     Some(rip as u64)
                 } else {
-                    dbg!(self.status());
                     None
                 },
             )

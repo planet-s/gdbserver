@@ -20,6 +20,9 @@ pub trait Target: Sized {
     /// Get the last status of the tracee
     fn status(&self) -> StopReason;
 
+    /// Get the process/thread id
+    fn pid(&self) -> u32;
+
     /// Read all the process register
     fn getregs(&self) -> Result<Registers>;
 

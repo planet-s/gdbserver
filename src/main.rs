@@ -1,5 +1,5 @@
 use gdb_remote_protocol::{
-    Error, Handler, MemoryRegion, ProcessType, StopReason, ThreadId, VCont, VContFeature,
+    Error, Handler, Id, MemoryRegion, ProcessType, StopReason, ThreadId, VCont, VContFeature,
 };
 use structopt::StructOpt;
 
@@ -63,8 +63,26 @@ impl Handler for App {
             VContFeature::RangeStep,
         ]))
     }
+    fn thread_list(&self, reset: bool) -> Result<Vec<ThreadId>> {
+        if reset {
+            let id = Id::Id(self.tracee.pid());
+            Ok(vec![
+                ThreadId { pid: id, tid: id },
+            ])
+        } else {
+            Ok(Vec::new())
+        }
+    }
     fn vcont(&self, actions: Vec<(VCont, Option<ThreadId>)>) -> Result<StopReason> {
-        if let Some((cmd, _id)) = actions.first() {
+        for (cmd, id) in &actions {
+            let id = id.unwrap_or(ThreadId { pid: Id::All, tid: Id::All });
+            dbg!(id);
+            dbg!(self.tracee.pid());
+            match (id.pid, id.tid) {
+                (Id::Id(pid), _) if pid != self.tracee.pid() => continue,
+                (_, Id::Id(tid)) if tid != self.tracee.pid() => continue,
+                (_, _) => (),
+            }
             match *cmd {
                 VCont::Continue => {
                     self.tracee.cont(None)?;
@@ -84,6 +102,7 @@ impl Handler for App {
                 }
                 _ => return Err(Error::Unimplemented),
             }
+            break;
         }
 
         Ok(self.tracee.status())
