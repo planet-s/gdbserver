@@ -1,6 +1,3 @@
-;; Compile with:
-;; nasm -f elf64 test.asm -g && ld test.o && ./a.out
-
 global _start
 
 section .data

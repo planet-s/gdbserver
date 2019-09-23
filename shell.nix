@@ -13,5 +13,5 @@ let
       "$@"
   '';
 in pkgs.mkShell {
-  nativeBuildInputs = [ gdb-init gdb-test pkgs.musl ];
+  nativeBuildInputs = [ gdb-init gdb-test ];
 }

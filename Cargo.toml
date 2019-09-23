@@ -5,8 +5,7 @@ authors = ["jD91mZM2 <me@krake.one>"]
 edition = "2018"
 
 [dependencies]
-# gdb-remote-protocol = { git = "https://github.com/luser/rust-gdb-remote-protocol", rev = "3e2f7c7204f85781f8b37d601217b05935547a7f" }
-gdb-remote-protocol = { path = "../external/rust-gdb-remote-protocol/" }
+gdb-remote-protocol = { git = "https://github.com/luser/rust-gdb-remote-protocol", rev = "565ab0c0ac189c82b0e7df217860599fc1ae6287" }
 structopt = "0.2.18"
 memchr = "2.2.1"
 libc = "0.2.62"
