@@ -1,9 +1,11 @@
-use gdb_remote_protocol::{
-    Error, Handler, Id, MemoryRegion, ProcessType, StopReason, ThreadId, VCont, VContFeature,
-};
-use structopt::StructOpt;
+use std::{cmp::min, borrow::Cow, net::TcpListener, convert::TryFrom};
 
-use std::{borrow::Cow, net::TcpListener};
+use gdb_remote_protocol::{
+    Error, Handler, Id, MemoryRegion, ProcessType, StopReason, ThreadId, VCont,
+    VContFeature,
+};
+use log::debug;
+use structopt::StructOpt;
 
 mod os;
 
@@ -54,6 +56,11 @@ impl Handler for App {
         self.tracee.setmem(bytes, address as usize)?;
         Ok(())
     }
+    fn query_supported_features(&self) -> Vec<String> {
+        vec![
+            String::from("qXfer:features:read+"),
+        ]
+    }
     fn query_supported_vcont(&self) -> Result<Cow<'static, [VContFeature]>> {
         Ok(Cow::Borrowed(&[
             VContFeature::Continue,
@@ -76,8 +83,8 @@ impl Handler for App {
     fn vcont(&self, actions: Vec<(VCont, Option<ThreadId>)>) -> Result<StopReason> {
         for (cmd, id) in &actions {
             let id = id.unwrap_or(ThreadId { pid: Id::All, tid: Id::All });
-            dbg!(id);
-            dbg!(self.tracee.pid());
+            debug!("Continuing thread: {:?}", id);
+            debug!("Continuing PID: {:?}", self.tracee.pid());
             match (id.pid, id.tid) {
                 (Id::Id(pid), _) if pid != self.tracee.pid() => continue,
                 (_, Id::Id(tid)) if tid != self.tracee.pid() => continue,
@@ -107,9 +114,28 @@ impl Handler for App {
 
         Ok(self.tracee.status())
     }
+    fn read_bytes(&self, object: String, annex: String, offset: u64, length: u64) -> Result<(Vec<u8>, bool)> {
+        match (&*object, &*annex) {
+            ("features", "target.xml") => {
+                let target_xml = include_str!("../target-desc.xml");
+
+                let start = usize::try_from(offset).expect("usize < u64");
+                let end = start.saturating_add(usize::try_from(length).expect("usize < u64"));
+                if start >= target_xml.len() {
+                    return Ok((Vec::new(), true));
+                }
+                let slice = &target_xml[start..min(end, target_xml.len())];
+                dbg!(slice.len());
+                Ok((Vec::from(slice), false))
+            },
+            _ => Err(Error::Unimplemented),
+        }
+    }
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    env_logger::init();
+
     let mut opt = Opt::from_args();
     opt.args.insert(0, opt.program.clone());
 

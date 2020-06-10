@@ -1,6 +1,8 @@
 use super::Registers;
 use crate::Result;
 
+use log::error;
+
 use std::{
     cell::Cell,
     ffi::CString,
@@ -98,21 +100,21 @@ impl super::Target for Os {
             if pid == 0 {
                 // Must not drop any memory, not unwind (panic).
                 if libc::ptrace(libc::PTRACE_TRACEME) < 0 {
-                    eprintln!(
+                    error!(
                         "ptrace(PTRACE_TRACEME) failed: {:?}",
                         io::Error::last_os_error()
                     );
                     libc::exit(1);
                 }
                 if libc::raise(libc::SIGSTOP) < 0 {
-                    eprintln!("raise(SIGSTOP) failed: {:?}", io::Error::last_os_error());
+                    error!("raise(SIGSTOP) failed: {:?}", io::Error::last_os_error());
                     libc::exit(1);
                 }
                 if libc::execvp(program, args.as_ptr()) < 0 {
-                    eprintln!("execv(...) failed: {:?}", io::Error::last_os_error());
+                    error!("execv(...) failed: {:?}", io::Error::last_os_error());
                     libc::exit(1);
                 }
-                eprintln!("execv(...) should not be able to succeed");
+                error!("execv(...) should not be able to succeed");
                 libc::exit(1);
             } else {
                 // Drop variables only the child needed
