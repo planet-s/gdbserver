@@ -1,13 +1,16 @@
 use super::Registers;
 use crate::Result;
 
-use log::error;
+use log::{error, warn};
 
 use std::{
     cell::Cell,
     ffi::CString,
-    io, iter,
+    io,
+    iter,
     mem::{self, MaybeUninit},
+    os::unix::ffi::OsStrExt,
+    path::PathBuf,
     ptr,
 };
 
@@ -403,6 +406,18 @@ impl super::Target for Os {
             self.last_status.set(status);
         }
         Ok(())
+    }
+
+    fn path(&self, pid: usize) -> Result<Vec<u8>> {
+        let mut path = PathBuf::from("/proc");
+        path.push(pid.to_string());
+        path.push("exe");
+
+        let link = path.read_link().map_err(|err| {
+            warn!("failed to read link {}: {}", path.display(), err);
+            Error::Error(crate::ERROR_GET_PATH)
+        })?;
+        Ok(Vec::from(link.as_os_str().as_bytes()))
     }
 }
 impl Drop for Os {

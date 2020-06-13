@@ -55,4 +55,7 @@ pub trait Target: Sized {
 
     /// Continue execution until signal or other breakpoint
     fn cont(&self, signal: Option<u8>) -> Result<()>;
+
+    /// Return the executable that's being run for specified PID
+    fn path(&self, pid: usize) -> Result<Vec<u8>>;
 }

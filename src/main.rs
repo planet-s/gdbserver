@@ -1,8 +1,8 @@
 use std::{cmp::min, borrow::Cow, net::TcpListener, convert::TryFrom};
 
 use gdb_remote_protocol::{
-    Error, Handler, Id, MemoryRegion, ProcessType, StopReason, ThreadId, VCont,
-    VContFeature,
+    Error, FileSystem, Handler, Id, LibcFS, MemoryRegion, ProcessType,
+    StopReason, ThreadId, VCont, VContFeature,
 };
 use log::debug;
 use structopt::StructOpt;
@@ -10,6 +10,9 @@ use structopt::StructOpt;
 mod os;
 
 use os::{Os, Registers, Target};
+
+const ERROR_PARSE_STRING: u8 = 0;
+const ERROR_GET_PATH: u8 = 1;
 
 #[derive(Debug, StructOpt)]
 struct Opt {
@@ -26,6 +29,7 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 pub struct App {
     tracee: Os,
+    fs: LibcFS,
 }
 impl Handler for App {
     fn attached(&self, _pid: Option<u64>) -> Result<ProcessType> {
@@ -59,6 +63,7 @@ impl Handler for App {
     fn query_supported_features(&self) -> Vec<String> {
         vec![
             String::from("qXfer:features:read+"),
+            String::from("qXfer:exec-file:read+"),
         ]
     }
     fn query_supported_vcont(&self) -> Result<Cow<'static, [VContFeature]>> {
@@ -115,21 +120,30 @@ impl Handler for App {
         Ok(self.tracee.status())
     }
     fn read_bytes(&self, object: String, annex: String, offset: u64, length: u64) -> Result<(Vec<u8>, bool)> {
+        let transfer_bytes = |source: &[u8]| -> Result<(Vec<u8>, bool)> {
+            let start = usize::try_from(offset).expect("usize < u64");
+            let end = start.saturating_add(usize::try_from(length).expect("usize < u64"));
+            if start >= source.len() {
+                return Ok((Vec::new(), true));
+            }
+            let slice = &source[start..min(end, source.len())];
+            Ok((Vec::from(slice), false))
+        };
         match (&*object, &*annex) {
             ("features", "target.xml") => {
-                let target_xml = include_str!("../target-desc.xml");
-
-                let start = usize::try_from(offset).expect("usize < u64");
-                let end = start.saturating_add(usize::try_from(length).expect("usize < u64"));
-                if start >= target_xml.len() {
-                    return Ok((Vec::new(), true));
-                }
-                let slice = &target_xml[start..min(end, target_xml.len())];
-                dbg!(slice.len());
-                Ok((Vec::from(slice), false))
+                let target_xml = include_bytes!("../target-desc.xml");
+                transfer_bytes(&target_xml[..])
+            },
+            ("exec-file", pid) => {
+                let pid = usize::from_str_radix(pid, 16).map_err(|_| Error::Error(ERROR_PARSE_STRING))?;
+                let path = self.tracee.path(pid)?;
+                transfer_bytes(&path[..])
             },
             _ => Err(Error::Unimplemented),
         }
+    }
+    fn fs(&self) -> Result<&dyn FileSystem, ()> {
+        Ok(&self.fs)
     }
 }
 
@@ -148,7 +162,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let tracee = Os::new(opt.program, opt.args)?;
 
-    gdb_remote_protocol::process_packets_from(&mut reader, &mut writer, App { tracee });
+    gdb_remote_protocol::process_packets_from(&mut reader, &mut writer, App {
+        tracee,
+        fs: LibcFS::default(),
+    });
 
     Ok(())
 }
