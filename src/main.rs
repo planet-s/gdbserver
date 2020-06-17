@@ -1,4 +1,9 @@
-use std::{cmp::min, borrow::Cow, net::TcpListener, convert::TryFrom};
+use std::{
+    cmp::min,
+    borrow::Cow,
+    net::TcpListener,
+    convert::TryFrom,
+};
 
 use gdb_remote_protocol::{
     Error, FileSystem, Handler, Id, LibcFS, MemoryRegion, ProcessType,
@@ -11,8 +16,10 @@ mod os;
 
 use os::{Os, Registers, Target};
 
-const ERROR_PARSE_STRING: u8 = 0;
-const ERROR_GET_PATH: u8 = 1;
+#[allow(unused)]
+const ERROR_PARSE_STRING: u8 = std::u8::MAX;
+#[allow(unused)]
+const ERROR_GET_PATH: u8 = std::u8::MAX - 1;
 
 #[derive(Debug, StructOpt)]
 struct Opt {

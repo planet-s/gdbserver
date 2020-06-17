@@ -90,45 +90,35 @@ where
 
 impl super::Target for Os {
     fn new(program: String, args: Vec<String>) -> Result<Self, Box<dyn std::error::Error>> {
-        let program = CString::new(program)?.into_raw();
-        let args = args
-            .into_iter()
-            .map(|s| CString::new(s).map(|s| s.into_raw() as *const _))
-            .chain(iter::once(Ok(ptr::null())))
-            .collect::<Result<Vec<*const libc::c_char>, _>>()?;
-
         unsafe {
             let pid = libc::fork();
 
             if pid == 0 {
                 // Must not drop any memory, not unwind (panic).
-                if libc::ptrace(libc::PTRACE_TRACEME) < 0 {
-                    error!(
-                        "ptrace(PTRACE_TRACEME) failed: {:?}",
-                        io::Error::last_os_error()
-                    );
-                    libc::exit(1);
-                }
-                if libc::raise(libc::SIGSTOP) < 0 {
-                    error!("raise(SIGSTOP) failed: {:?}", io::Error::last_os_error());
-                    libc::exit(1);
-                }
-                if libc::execvp(program, args.as_ptr()) < 0 {
-                    error!("execv(...) failed: {:?}", io::Error::last_os_error());
-                    libc::exit(1);
-                }
-                error!("execv(...) should not be able to succeed");
-                libc::exit(1);
-            } else {
-                // Drop variables only the child needed
-                CString::from_raw(program);
-                for arg in args {
-                    if !arg.is_null() {
-                        // We originally get mutable memory, don't worry!
-                        CString::from_raw(arg as *mut _);
-                    }
-                }
+                let result = (|| -> Result<(), Box<dyn std::error::Error>> {
+                    let program = CString::new(program)?.into_raw();
+                    let args = args.into_iter()
+                        .map(|s| CString::new(s).map(|s| s.into_raw() as *const _))
+                        .chain(iter::once(Ok(ptr::null())))
+                        .collect::<Result<Vec<*const libc::c_char>, _>>()?;
 
+                    e!(libc::ptrace(libc::PTRACE_TRACEME));
+                    e!(libc::raise(libc::SIGSTOP));
+                    e!(libc::execvp(program, args.as_ptr()));
+                    Ok(())
+                })();
+
+                match result {
+                    Ok(()) => {
+                        error!("execvp(...) should not be able to succeed");
+                        libc::exit(1);
+                    },
+                    Err(err) => {
+                        error!("failure: {}", err);
+                        libc::exit(1);
+                    },
+                }
+            } else {
                 // Wait for tracee to stop
                 let mut status = 0;
                 e!(libc::waitpid(pid, &mut status, 0));

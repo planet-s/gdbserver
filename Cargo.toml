@@ -8,6 +8,11 @@ edition = "2018"
 gdb-remote-protocol = { path = "rust-gdb-remote-protocol" }
 structopt = "0.2.18"
 memchr = "2.2.1"
-libc = "0.2.62"
 env_logger = "0.7.1"
 log = "0.4.8"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+libc = "0.2.62"
+[target.'cfg(target_os = "redox")'.dependencies]
+redox_syscall = { git = "https://gitlab.redox-os.org/redox-os/syscall" }
+strace = { git = "https://gitlab.redox-os.org/redox-os/strace-redox" }
