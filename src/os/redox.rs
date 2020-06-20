@@ -7,7 +7,6 @@ use std::{
     io,
     mem,
     os::unix::ffi::OsStrExt,
-    path::PathBuf,
 };
 
 use gdb_remote_protocol::{Error, StopReason};
@@ -107,7 +106,7 @@ impl super::Target for Os {
             } else {
                 // Wait for tracee to stop
                 let mut status = 0;
-                e!(syscall::waitpid(pid, &mut status, WaitFlags::empty()));
+                e!(syscall::waitpid(pid, &mut status, WaitFlags::WUNTRACED));
 
                 // Attach tracer
                 let mut tracer = e!(Tracer::attach(pid));
@@ -116,7 +115,11 @@ impl super::Target for Os {
                 e!(syscall::kill(pid, SIGCONT));
                 e!(tracer.next(strace::Flags::STOP_PRE_SYSCALL));
                 assert_eq!(e!(tracer.regs.get_int()).return_value(), syscall::SYS_FEXEC);
-                e!(tracer.next(strace::Flags::STOP_SINGLESTEP));
+
+                // TODO: Don't stop only on syscall, stop on first instruction.
+                // Single-stepping doesn't work across fexec yet for some reason.
+                // e!(tracer.next(strace::Flags::STOP_SINGLESTEP));
+                e!(tracer.next(strace::Flags::STOP_POST_SYSCALL));
 
                 Ok(Os {
                     pid,
@@ -362,11 +365,14 @@ impl super::Target for Os {
     }
 
     fn path(&self, pid: usize) -> Result<Vec<u8>> {
-        let mut path = PathBuf::from("proc:");
-        path.push(pid.to_string());
-        path.push("/exe");
+        let mut path = e!(fs::read(format!("proc:{}/exe", pid)));
 
-        Ok(e!(fs::read(path)))
+        // Strip out "file:" so GDB doesn't interpret it as a URL.
+        if path.starts_with(&b"file:"[..]) {
+            path.drain(0..5);
+        }
+
+        Ok(path)
     }
 }
 impl Drop for Os {
