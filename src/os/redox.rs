@@ -50,6 +50,13 @@ impl FromOsError<syscall::Error> for Box<dyn std::error::Error> {
     }
 }
 
+fn stopped() -> usize {
+    let status = (SIGSTOP << 8) | 0x7f;
+    assert!(syscall::wifstopped(status));
+    assert_eq!(syscall::wstopsig(status), SIGSTOP);
+    status
+}
+
 macro_rules! e {
     ($result:expr) => {{
         match $result {
@@ -326,40 +333,29 @@ impl super::Target for Os {
         let mut tracer = self.tracer.borrow_mut();
         e!(tracer.next(strace::Flags::STOP_SINGLESTEP));
 
-        // Just pretend ptrace SIGSTOP:ped this
-        let status = (SIGSTOP << 8) | 0x7f;
-        assert!(syscall::wifstopped(status));
-        assert_eq!(syscall::wstopsig(status), SIGSTOP);
-        self.last_status.set(status);
+        let rip = e!(tracer.regs.get_int()).rip;
 
-        Ok(None)
-        // unsafe {
-        //     Ok(
-        //         if libc::WIFSTOPPED(self.last_status.get())
-        //             && libc::WSTOPSIG(self.last_status.get()) == libc::SIGTRAP
-        //         {
-        //             let rip = e!(libc::ptrace(
-        //                 libc::PTRACE_PEEKUSER,
-        //                 self.pid,
-        //                 libc::RIP as usize * mem::size_of::<usize>()
-        //             ));
-        //             Some(rip as u64)
-        //         } else {
-        //             None
-        //         },
-        //     )
-        // }
+        // Just pretend ptrace SIGSTOP:ped this
+        self.last_status.set(stopped());
+
+        Ok(Some(rip as _))
     }
 
     fn cont(&self, _signal: Option<u8>) -> Result<()> {
         let mut tracer = self.tracer.borrow_mut();
-        e!(tracer.next(strace::Flags::STOP_BREAKPOINT));
 
-        // Just pretend ptrace SIGSTOP:ped this
-        let status = (SIGSTOP << 8) | 0x7f;
-        assert!(syscall::wifstopped(status));
-        assert_eq!(syscall::wstopsig(status), SIGSTOP);
-        self.last_status.set(status);
+        match tracer.next(strace::Flags::STOP_BREAKPOINT) {
+            Ok(_) => {
+                // Just pretend ptrace SIGSTOP:ped this
+                self.last_status.set(stopped());
+            },
+            Err(err) if err.raw_os_error() == Some(syscall::ESRCH) => {
+                let mut status = 0;
+                e!(syscall::waitpid(0, &mut status, WNOHANG));
+                self.last_status.set(status);
+            },
+            Err(err) => e!(Err(err)),
+        };
 
         Ok(())
     }
