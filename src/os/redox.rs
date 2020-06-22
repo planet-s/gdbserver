@@ -119,7 +119,7 @@ impl super::Target for Os {
                 // TODO: Don't stop only on syscall, stop on first instruction.
                 // Single-stepping doesn't work across fexec yet for some reason.
                 // e!(tracer.next(strace::Flags::STOP_SINGLESTEP));
-                e!(tracer.next(strace::Flags::STOP_POST_SYSCALL));
+                e!(tracer.next(strace::Flags::STOP_EXEC));
 
                 Ok(Os {
                     pid,
