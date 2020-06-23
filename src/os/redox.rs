@@ -11,7 +11,7 @@ use std::{
 
 use gdb_remote_protocol::{Error, StopReason};
 use log::error;
-use strace::Tracer;
+use strace::{Flags, Tracer};
 use syscall::flag::*;
 
 pub struct Os {
@@ -50,13 +50,6 @@ impl FromOsError<syscall::Error> for Box<dyn std::error::Error> {
     }
 }
 
-fn stopped() -> usize {
-    let status = (SIGSTOP << 8) | 0x7f;
-    assert!(syscall::wifstopped(status));
-    assert_eq!(syscall::wstopsig(status), SIGSTOP);
-    status
-}
-
 macro_rules! e {
     ($result:expr) => {{
         match $result {
@@ -64,6 +57,42 @@ macro_rules! e {
             Err(err) => return Err(FromOsError::from_os_error(err)),
         }
     }};
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ProcessState {
+    Running,
+    Exited,
+}
+
+impl Os {
+    /// Continues the tracer with the specified flags, and the breakpoint
+    /// flag. If the process exits, we waitpid the child and set the status. We
+    /// also return `Exited` to signal that the process is no longer
+    /// alive. Returns `Running` and sets status to SIGSTOP if the process does
+    /// not exit.
+    fn next(&self, flags: Flags) -> Result<ProcessState> {
+        let mut tracer = self.tracer.borrow_mut();
+
+        match tracer.next(flags | Flags::STOP_BREAKPOINT) {
+            Ok(event) => {
+                // Just pretend ptrace SIGSTOP:ped this
+                let status = (SIGSTOP << 8) | 0x7f;
+                assert!(syscall::wifstopped(status));
+                assert_eq!(syscall::wstopsig(status), SIGSTOP);
+
+                Ok(ProcessState::Running)
+            },
+            Err(err) if err.raw_os_error() == Some(syscall::ESRCH) => {
+                let mut status = 0;
+                e!(syscall::waitpid(0, &mut status, WNOHANG));
+                self.last_status.set(status);
+
+                Ok(ProcessState::Exited)
+            },
+            Err(err) => e!(Err(err)),
+        }
+    }
 }
 
 impl super::Target for Os {
@@ -120,17 +149,17 @@ impl super::Target for Os {
 
                 // Step past fexec
                 e!(syscall::kill(pid, SIGCONT));
-                e!(tracer.next(strace::Flags::STOP_PRE_SYSCALL));
+                e!(tracer.next(Flags::STOP_PRE_SYSCALL));
                 assert_eq!(e!(tracer.regs.get_int()).return_value(), syscall::SYS_FEXEC);
 
                 // TODO: Don't stop only on syscall, stop on first instruction.
                 // Single-stepping doesn't work across fexec yet for some reason.
-                // e!(tracer.next(strace::Flags::STOP_SINGLESTEP));
-                e!(tracer.next(strace::Flags::STOP_EXEC));
+                // e!(tracer.next(Flags::STOP_SINGLESTEP));
+                e!(tracer.next(Flags::STOP_EXEC));
 
                 Ok(Os {
                     pid,
-                    last_status: Cell::from(status),
+                    last_status: Cell::new(status),
                     tracer: RefCell::new(tracer),
                 })
             }
@@ -330,33 +359,18 @@ impl super::Target for Os {
     }
 
     fn step(&self, _signal: Option<u8>) -> Result<Option<u64>> {
-        let mut tracer = self.tracer.borrow_mut();
-        e!(tracer.next(strace::Flags::STOP_SINGLESTEP));
+        if self.next(Flags::STOP_SINGLESTEP)? == ProcessState::Running {
+            let mut tracer = self.tracer.borrow_mut();
 
-        let rip = e!(tracer.regs.get_int()).rip;
-
-        // Just pretend ptrace SIGSTOP:ped this
-        self.last_status.set(stopped());
-
-        Ok(Some(rip as _))
+            let rip = e!(tracer.regs.get_int()).rip;
+            Ok(Some(rip as _))
+        } else {
+            Ok(None)
+        }
     }
 
     fn cont(&self, _signal: Option<u8>) -> Result<()> {
-        let mut tracer = self.tracer.borrow_mut();
-
-        match tracer.next(strace::Flags::STOP_BREAKPOINT) {
-            Ok(_) => {
-                // Just pretend ptrace SIGSTOP:ped this
-                self.last_status.set(stopped());
-            },
-            Err(err) if err.raw_os_error() == Some(syscall::ESRCH) => {
-                let mut status = 0;
-                e!(syscall::waitpid(0, &mut status, WNOHANG));
-                self.last_status.set(status);
-            },
-            Err(err) => e!(Err(err)),
-        };
-
+        self.next(Flags::empty())?;
         Ok(())
     }
 
