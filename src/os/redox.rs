@@ -75,7 +75,7 @@ impl Os {
         let mut tracer = self.tracer.borrow_mut();
 
         match tracer.next(flags | Flags::STOP_BREAKPOINT) {
-            Ok(event) => {
+            Ok(_event) => {
                 // Just pretend ptrace SIGSTOP:ped this
                 let status = (SIGSTOP << 8) | 0x7f;
                 assert!(syscall::wifstopped(status));
