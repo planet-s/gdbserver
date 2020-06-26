@@ -1,3 +1,3 @@
 [submodule "rust-gdb-remote-protocol"]
 	path = rust-gdb-remote-protocol
-	url = git@github.com:redox-os/rust-gdb-remote-protocol.git
+	url = https://github.com/luser/rust-gdb-remote-protocol.git
