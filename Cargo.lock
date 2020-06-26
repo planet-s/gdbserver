@@ -89,7 +89,7 @@ dependencies = [
  "libc 0.2.71 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "memchr 2.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "redox_syscall 0.1.56 (git+https://gitlab.redox-os.org/jD91mZM2/syscall?branch=ptrace-fexec)",
+ "redox_syscall 0.1.56 (git+https://gitlab.redox-os.org/redox-os/syscall)",
  "strace 0.1.0 (git+https://gitlab.redox-os.org/redox-os/strace-redox)",
  "structopt 0.2.18 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -179,14 +179,6 @@ dependencies = [
 name = "redox_syscall"
 version = "0.1.56"
 source = "git+https://gitlab.redox-os.org/redox-os/syscall#9ecdc11d73677477b37567a47af1633478093cbb"
-dependencies = [
- "bitflags 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "redox_syscall"
-version = "0.1.56"
-source = "git+https://gitlab.redox-os.org/jD91mZM2/syscall?branch=ptrace-fexec#c23d36e8923b8087039c26fcde3c359b5e0accc7"
 dependencies = [
  "bitflags 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -381,7 +373,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum quick-error 1.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "a1d01941d82fa2ab50be1e79e6714289dd7cde78eba4c074bc5a4374f650dfe0"
 "checksum quote 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)" = "7a6e920b65c65f10b2ae65c831a81a073a89edd28c7cce89475bff467ab4167a"
 "checksum quote 0.6.13 (registry+https://github.com/rust-lang/crates.io-index)" = "6ce23b6b870e8f94f81fb0a363d65d86675884b34a09043c81e5562f11c1f8e1"
-"checksum redox_syscall 0.1.56 (git+https://gitlab.redox-os.org/jD91mZM2/syscall?branch=ptrace-fexec)" = "<none>"
 "checksum redox_syscall 0.1.56 (git+https://gitlab.redox-os.org/redox-os/syscall)" = "<none>"
 "checksum regex 1.3.9 (registry+https://github.com/rust-lang/crates.io-index)" = "9c3780fcf44b193bc4d09f36d2a3c87b251da4a046c87795a0d35f4f927ad8e6"
 "checksum regex-syntax 0.6.18 (registry+https://github.com/rust-lang/crates.io-index)" = "26412eb97c6b088a6997e05f69403a802a92d520de2f8e63c2b65f9e0f47c4e8"
