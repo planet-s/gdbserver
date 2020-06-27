@@ -156,7 +156,7 @@ impl super::Target for Os {
     }
 
     fn pid(&self) -> u32 {
-        return self.pid as _;
+        self.pid as _
     }
 
     fn getregs(&self) -> Result<Registers> {

@@ -1,8 +1,10 @@
 use std::{
-    cmp::min,
     borrow::Cow,
-    net::TcpListener,
+    cmp::min,
     convert::TryFrom,
+    io::{self, prelude::*, BufReader, BufWriter},
+    net::TcpListener,
+    os::unix::net::UnixListener,
 };
 
 use gdb_remote_protocol::{
@@ -26,6 +28,9 @@ struct Opt {
     /// The address which to bind the server to
     #[structopt(short = "a", long = "addr", default_value = "0.0.0.0:64126")]
     addr: String,
+    /// The type of address specified
+    #[structopt(short = "t", long = "type", default_value = "tcp", possible_values = &["tcp", "unix", "stdio"])]
+    kind: String,
     /// The program that should be debugged
     program: String,
     /// The arguments of the program
@@ -160,12 +165,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut opt = Opt::from_args();
     opt.args.insert(0, opt.program.clone());
 
-    let mut writer = {
+    let stdin = io::stdin();
+    let stdout = io::stdout();
+
+    let (mut reader, mut writer): (Box<dyn Read>, Box<dyn Write>) = if opt.kind == "unix" {
+        let listener = UnixListener::bind(opt.addr)?;
+        let (writer, _addr) = listener.accept()?;
+        (
+            Box::new(BufReader::new(writer.try_clone()?)),
+            Box::new(BufWriter::new(writer)),
+        )
+    } else if opt.kind == "stdio" {
+        (
+            Box::new(stdin.lock()),
+            Box::new(BufWriter::new(stdout.lock())),
+        )
+    } else {
+        assert_eq!(opt.kind, "tcp");
         let listener = TcpListener::bind(opt.addr)?;
-        let (stream, _addr) = listener.accept()?;
-        stream
+        let (writer, _addr) = listener.accept()?;
+        (
+            Box::new(BufReader::new(writer.try_clone()?)),
+            Box::new(BufWriter::new(writer)),
+        )
     };
-    let mut reader = writer.try_clone()?;
 
     let tracee = Os::new(opt.program, opt.args)?;
 

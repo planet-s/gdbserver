@@ -48,7 +48,7 @@ pub trait Target: Sized {
     {
         loop {
             let rip = self.step(None)?;
-            println!("{:X?}", rip);
+            //println!("{:X?}", rip);
             if rip.map(|rip| !range.contains(&rip)).unwrap_or(true) {
                 break;
             }
