@@ -247,12 +247,7 @@ impl super::Target for Os {
         registers.xmm13 = Some(float.xmm_space[13] as _);
         registers.xmm14 = Some(float.xmm_space[14] as _);
         registers.xmm15 = Some(float.xmm_space[15] as _);
-
         registers.mxcsr = Some(float.mxcsr);
-        // registers.fs_base = Some(int.fs_base as _);
-        // registers.gs_base = Some(int.gs_base as _);
-        registers.orig_rax = Some(int.rax as _);
-
         Ok(registers)
     }
 
@@ -331,11 +326,7 @@ impl super::Target for Os {
             .xmm15
             .map(|r| r as _)
             .unwrap_or(float.xmm_space[15]);
-
         float.mxcsr = registers.mxcsr.unwrap_or(float.mxcsr);
-        // int.fs_base = registers.fs_base.map(|r| r as _).unwrap_or(int.fs_base);
-        // int.gs_base = registers.gs_base.map(|r| r as _).unwrap_or(int.gs_base);
-        int.rax = registers.orig_rax.map(|r| r as _).unwrap_or(int.rax);
 
         let mut tracer = self.tracer.borrow_mut();
         e!(tracer.regs.set_int(&strace::IntRegisters(int)));

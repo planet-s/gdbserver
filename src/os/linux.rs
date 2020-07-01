@@ -236,11 +236,7 @@ impl super::Target for Os {
         registers.xmm13 = Some(float.xmm_space[13] as _);
         registers.xmm14 = Some(float.xmm_space[14] as _);
         registers.xmm15 = Some(float.xmm_space[15] as _);
-
         registers.mxcsr = Some(float.mxcsr);
-        registers.fs_base = Some(int.fs_base as _);
-        registers.gs_base = Some(int.gs_base as _);
-        registers.orig_rax = Some(int.orig_rax as _);
 
         Ok(registers)
     }
@@ -320,11 +316,7 @@ impl super::Target for Os {
             .xmm15
             .map(|r| r as _)
             .unwrap_or(float.xmm_space[15]);
-
         float.mxcsr = registers.mxcsr.unwrap_or(float.mxcsr);
-        int.fs_base = registers.fs_base.map(|r| r as _).unwrap_or(int.fs_base);
-        int.gs_base = registers.gs_base.map(|r| r as _).unwrap_or(int.gs_base);
-        int.orig_rax = registers.orig_rax.map(|r| r as _).unwrap_or(int.orig_rax);
 
         unsafe {
             e!(libc::ptrace(libc::PTRACE_SETREGS, self.pid, 0, &int));

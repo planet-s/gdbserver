@@ -1,67 +1,72 @@
 <?xml version="1.0"?>
 <!DOCTYPE target SYSTEM "gdb-target.dtd">
+
+<!-- See https://sourceware.org/gdb/onlinedocs/gdb/Target-Description-Format.html#Target-Description-Format -->
+<!-- Also https://sourceware.org/gdb/onlinedocs/gdb/i386-Features.html#i386-Features -->
+
 <target version="1.0">
   <architecture>i386:x86-64</architecture>
-  <!-- Gotten from gnu-binutils/gdb/regformats/i386/amd64-linux.dat -->
-  <reg name="rax" bitsize="64" save-restore="no" type="int" group="general" />
-  <reg name="rax" bitsize="64" save-restore="yes" type="int" group="general" />
-  <reg name="rbx" bitsize="64" save-restore="yes" type="int" group="general" />
-  <reg name="rcx" bitsize="64" save-restore="yes" type="int" group="general" />
-  <reg name="rdx" bitsize="64" save-restore="yes" type="int" group="general" />
-  <reg name="rsi" bitsize="64" save-restore="yes" type="int" group="general" />
-  <reg name="rdi" bitsize="64" save-restore="yes" type="int" group="general" />
-  <reg name="rbp" bitsize="64" save-restore="yes" type="int" group="general" />
-  <reg name="rsp" bitsize="64" save-restore="yes" type="int" group="general" />
-  <reg name="r8" bitsize="64" save-restore="yes" type="int" group="general" />
-  <reg name="r9" bitsize="64" save-restore="yes" type="int" group="general" />
-  <reg name="r10" bitsize="64" save-restore="yes" type="int" group="general" />
-  <reg name="r11" bitsize="64" save-restore="yes" type="int" group="general" />
-  <reg name="r12" bitsize="64" save-restore="yes" type="int" group="general" />
-  <reg name="r13" bitsize="64" save-restore="yes" type="int" group="general" />
-  <reg name="r14" bitsize="64" save-restore="yes" type="int" group="general" />
-  <reg name="r15" bitsize="64" save-restore="yes" type="int" group="general" />
-  <reg name="rip" bitsize="64" save-restore="yes" type="int" group="general" />
-  <reg name="eflags" bitsize="32" save-restore="yes" type="int" group="general" />
-  <reg name="cs" bitsize="32" save-restore="yes" type="int" group="general" />
-  <reg name="ss" bitsize="32" save-restore="yes" type="int" group="general" />
-  <reg name="ds" bitsize="32" save-restore="yes" type="int" group="general" />
-  <reg name="es" bitsize="32" save-restore="yes" type="int" group="general" />
-  <reg name="fs" bitsize="32" save-restore="yes" type="int" group="general" />
-  <reg name="gs" bitsize="32" save-restore="yes" type="int" group="general" />
-  <reg name="st0" bitsize="80" save-restore="yes" type="float" group="general" />
-  <reg name="st1" bitsize="80" save-restore="yes" type="float" group="general" />
-  <reg name="st2" bitsize="80" save-restore="yes" type="float" group="general" />
-  <reg name="st3" bitsize="80" save-restore="yes" type="float" group="general" />
-  <reg name="st4" bitsize="80" save-restore="yes" type="float" group="general" />
-  <reg name="st5" bitsize="80" save-restore="yes" type="float" group="general" />
-  <reg name="st6" bitsize="80" save-restore="yes" type="float" group="general" />
-  <reg name="st7" bitsize="80" save-restore="yes" type="float" group="general" />
-  <reg name="fctrl" bitsize="32" save-restore="yes" type="float" group="general" />
-  <reg name="fstat" bitsize="32" save-restore="yes" type="float" group="general" />
-  <reg name="ftag" bitsize="32" save-restore="yes" type="float" group="general" />
-  <reg name="fiseg" bitsize="32" save-restore="yes" type="float" group="general" />
-  <reg name="fioff" bitsize="32" save-restore="yes" type="float" group="general" />
-  <reg name="foseg" bitsize="32" save-restore="yes" type="float" group="general" />
-  <reg name="fooff" bitsize="32" save-restore="yes" type="float" group="general" />
-  <reg name="fop" bitsize="32" save-restore="yes" type="float" group="general" />
-  <reg name="xmm0" bitsize="128" save-restore="yes" type="float" group="general" />
-  <reg name="xmm1" bitsize="128" save-restore="yes" type="float" group="general" />
-  <reg name="xmm2" bitsize="128" save-restore="yes" type="float" group="general" />
-  <reg name="xmm3" bitsize="128" save-restore="yes" type="float" group="general" />
-  <reg name="xmm4" bitsize="128" save-restore="yes" type="float" group="general" />
-  <reg name="xmm5" bitsize="128" save-restore="yes" type="float" group="general" />
-  <reg name="xmm6" bitsize="128" save-restore="yes" type="float" group="general" />
-  <reg name="xmm7" bitsize="128" save-restore="yes" type="float" group="general" />
-  <reg name="xmm8" bitsize="128" save-restore="yes" type="float" group="general" />
-  <reg name="xmm9" bitsize="128" save-restore="yes" type="float" group="general" />
-  <reg name="xmm10" bitsize="128" save-restore="yes" type="float" group="general" />
-  <reg name="xmm11" bitsize="128" save-restore="yes" type="float" group="general" />
-  <reg name="xmm12" bitsize="128" save-restore="yes" type="float" group="general" />
-  <reg name="xmm13" bitsize="128" save-restore="yes" type="float" group="general" />
-  <reg name="xmm14" bitsize="128" save-restore="yes" type="float" group="general" />
-  <reg name="xmm15" bitsize="128" save-restore="yes" type="float" group="general" />
-  <reg name="mxcsr" bitsize="32" save-restore="yes" type="float" group="general" />
-  <reg name="orig_rax" bitsize="64" save-restore="yes" type="int" group="general" />
-  <reg name="fs_base" bitsize="64" save-restore="yes" type="int" group="general" />
-  <reg name="gs_base" bitsize="64" save-restore="yes" type="int" group="general" />
+
+  <feature name="org.gnu.gdb.i386.core">
+    <reg name="rax" bitsize="64" group="general" />
+    <reg name="rbx" bitsize="64" group="general" />
+    <reg name="rcx" bitsize="64" group="general" />
+    <reg name="rdx" bitsize="64" group="general" />
+    <reg name="rsi" bitsize="64" group="general" />
+    <reg name="rdi" bitsize="64" group="general" />
+    <reg name="rbp" bitsize="64" group="general" />
+    <reg name="rsp" bitsize="64" group="general" />
+    <reg name="r8" bitsize="64" group="general" />
+    <reg name="r9" bitsize="64" group="general" />
+    <reg name="r10" bitsize="64" group="general" />
+    <reg name="r11" bitsize="64" group="general" />
+    <reg name="r12" bitsize="64" group="general" />
+    <reg name="r13" bitsize="64" group="general" />
+    <reg name="r14" bitsize="64" group="general" />
+    <reg name="r15" bitsize="64" group="general" />
+    <reg name="rip" bitsize="64" group="general" />
+    <reg name="eflags" bitsize="32" group="general" />
+    <reg name="cs" bitsize="32" group="general" />
+    <reg name="ss" bitsize="32" group="general" />
+    <reg name="ds" bitsize="32" group="general" />
+    <reg name="es" bitsize="32" group="general" />
+    <reg name="fs" bitsize="32" group="general" />
+    <reg name="gs" bitsize="32" group="general" />
+    <reg name="st0" bitsize="80" type="float" group="float" />
+    <reg name="st1" bitsize="80" type="float" group="float" />
+    <reg name="st2" bitsize="80" type="float" group="float" />
+    <reg name="st3" bitsize="80" type="float" group="float" />
+    <reg name="st4" bitsize="80" type="float" group="float" />
+    <reg name="st5" bitsize="80" type="float" group="float" />
+    <reg name="st6" bitsize="80" type="float" group="float" />
+    <reg name="st7" bitsize="80" type="float" group="float" />
+    <reg name="fctrl" bitsize="32" type="float" group="float" />
+    <reg name="fstat" bitsize="32" type="float" group="float" />
+    <reg name="ftag" bitsize="32" type="float" group="float" />
+    <reg name="fiseg" bitsize="32" type="float" group="float" />
+    <reg name="fioff" bitsize="32" type="float" group="float" />
+    <reg name="foseg" bitsize="32" type="float" group="float" />
+    <reg name="fooff" bitsize="32" type="float" group="float" />
+    <reg name="fop" bitsize="32" type="float" group="float" />
+  </feature>
+
+  <feature name="org.gnu.gdb.i386.sse">
+    <reg name="xmm0" bitsize="128" type="float" group="float" />
+    <reg name="xmm1" bitsize="128" type="float" group="float" />
+    <reg name="xmm2" bitsize="128" type="float" group="float" />
+    <reg name="xmm3" bitsize="128" type="float" group="float" />
+    <reg name="xmm4" bitsize="128" type="float" group="float" />
+    <reg name="xmm5" bitsize="128" type="float" group="float" />
+    <reg name="xmm6" bitsize="128" type="float" group="float" />
+    <reg name="xmm7" bitsize="128" type="float" group="float" />
+    <reg name="xmm8" bitsize="128" type="float" group="float" />
+    <reg name="xmm9" bitsize="128" type="float" group="float" />
+    <reg name="xmm10" bitsize="128" type="float" group="float" />
+    <reg name="xmm11" bitsize="128" type="float" group="float" />
+    <reg name="xmm12" bitsize="128" type="float" group="float" />
+    <reg name="xmm13" bitsize="128" type="float" group="float" />
+    <reg name="xmm14" bitsize="128" type="float" group="float" />
+    <reg name="xmm15" bitsize="128" type="float" group="float" />
+    <reg name="mxcsr" bitsize="32" type="float" group="float" />
+  </feature>
 </target>

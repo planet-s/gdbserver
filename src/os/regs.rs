@@ -1,4 +1,5 @@
-use std::iter;
+use byteorder::{NativeEndian, ReadBytesExt, WriteBytesExt};
+use f80::f80;
 
 #[derive(Default)]
 pub struct Registers {
@@ -43,6 +44,7 @@ pub struct Registers {
     pub foseg: Option<u32>,
     pub fooff: Option<u32>,
     pub fop: Option<u32>,
+
     pub xmm0: Option<u128>,
     pub xmm1: Option<u128>,
     pub xmm2: Option<u128>,
@@ -60,153 +62,134 @@ pub struct Registers {
     pub xmm14: Option<u128>,
     pub xmm15: Option<u128>,
     pub mxcsr: Option<u32>,
-    pub orig_rax: Option<u64>,
-    pub fs_base: Option<u64>,
-    pub gs_base: Option<u64>,
 }
 impl Registers {
     // The following sadly assume the endianness in order to only read
     // 10 bits in the st* stuff instead of the full 16.
     #[rustfmt::skip] // formatting can only make this horrible code look worse
     pub fn decode(mut input: &[u8]) -> Self {
-        let mut byte = || -> u8 {
-            let b = input[0];
-            input = &input[1..];
-            b
-        };
         Self {
-            rax: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
-            rbx: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
-            rcx: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
-            rdx: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
-            rsi: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
-            rdi: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
-            rbp: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
-            rsp: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
-            r8: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
-            r9: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
-            r10: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
-            r11: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
-            r12: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
-            r13: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
-            r14: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
-            r15: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
-            rip: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
-            eflags: Some(u32::from_le_bytes([byte(), byte(), byte(), byte()])),
-            cs: Some(u32::from_le_bytes([byte(), byte(), byte(), byte()])),
-            ss: Some(u32::from_le_bytes([byte(), byte(), byte(), byte()])),
-            ds: Some(u32::from_le_bytes([byte(), byte(), byte(), byte()])),
-            es: Some(u32::from_le_bytes([byte(), byte(), byte(), byte()])),
-            fs: Some(u32::from_le_bytes([byte(), byte(), byte(), byte()])),
-            gs: Some(u32::from_le_bytes([byte(), byte(), byte(), byte()])),
-            st0: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), 0, 0, 0, 0, 0, 0])),
-            st1: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), 0, 0, 0, 0, 0, 0])),
-            st2: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), 0, 0, 0, 0, 0, 0])),
-            st3: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), 0, 0, 0, 0, 0, 0])),
-            st4: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), 0, 0, 0, 0, 0, 0])),
-            st5: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), 0, 0, 0, 0, 0, 0])),
-            st6: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), 0, 0, 0, 0, 0, 0])),
-            st7: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), 0, 0, 0, 0, 0, 0])),
-            fctrl: Some(u32::from_le_bytes([byte(), byte(), byte(), byte()])),
-            fstat: Some(u32::from_le_bytes([byte(), byte(), byte(), byte()])),
-            ftag: Some(u32::from_le_bytes([byte(), byte(), byte(), byte()])),
-            fiseg: Some(u32::from_le_bytes([byte(), byte(), byte(), byte()])),
-            fioff: Some(u32::from_le_bytes([byte(), byte(), byte(), byte()])),
-            foseg: Some(u32::from_le_bytes([byte(), byte(), byte(), byte()])),
-            fooff: Some(u32::from_le_bytes([byte(), byte(), byte(), byte()])),
-            fop: Some(u32::from_le_bytes([byte(), byte(), byte(), byte()])),
-            xmm0: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
-            xmm1: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
-            xmm2: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
-            xmm3: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
-            xmm4: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
-            xmm5: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
-            xmm6: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
-            xmm7: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
-            xmm8: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
-            xmm9: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
-            xmm10: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
-            xmm11: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
-            xmm12: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
-            xmm13: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
-            xmm14: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
-            xmm15: Some(u128::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
-            mxcsr: Some(u32::from_le_bytes([byte(), byte(), byte(), byte()])),
-            orig_rax: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
-            fs_base: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
-            gs_base: Some(u64::from_le_bytes([byte(), byte(), byte(), byte(), byte(), byte(), byte(), byte()])),
+            rax: Some(input.read_u64::<NativeEndian>().unwrap()),
+            rbx: Some(input.read_u64::<NativeEndian>().unwrap()),
+            rcx: Some(input.read_u64::<NativeEndian>().unwrap()),
+            rdx: Some(input.read_u64::<NativeEndian>().unwrap()),
+            rsi: Some(input.read_u64::<NativeEndian>().unwrap()),
+            rdi: Some(input.read_u64::<NativeEndian>().unwrap()),
+            rbp: Some(input.read_u64::<NativeEndian>().unwrap()),
+            rsp: Some(input.read_u64::<NativeEndian>().unwrap()),
+            r8: Some(input.read_u64::<NativeEndian>().unwrap()),
+            r9: Some(input.read_u64::<NativeEndian>().unwrap()),
+            r10: Some(input.read_u64::<NativeEndian>().unwrap()),
+            r11: Some(input.read_u64::<NativeEndian>().unwrap()),
+            r12: Some(input.read_u64::<NativeEndian>().unwrap()),
+            r13: Some(input.read_u64::<NativeEndian>().unwrap()),
+            r14: Some(input.read_u64::<NativeEndian>().unwrap()),
+            r15: Some(input.read_u64::<NativeEndian>().unwrap()),
+            rip: Some(input.read_u64::<NativeEndian>().unwrap()),
+            eflags: Some(input.read_u32::<NativeEndian>().unwrap()),
+            cs: Some(input.read_u32::<NativeEndian>().unwrap()),
+            ss: Some(input.read_u32::<NativeEndian>().unwrap()),
+            ds: Some(input.read_u32::<NativeEndian>().unwrap()),
+            es: Some(input.read_u32::<NativeEndian>().unwrap()),
+            fs: Some(input.read_u32::<NativeEndian>().unwrap()),
+            gs: Some(input.read_u32::<NativeEndian>().unwrap()),
+
+            st0: Some(f80::from_f64(f64::from_bits(input.read_u64::<NativeEndian>().unwrap())).to_bits()),
+            st1: Some(f80::from_f64(f64::from_bits(input.read_u64::<NativeEndian>().unwrap())).to_bits()),
+            st2: Some(f80::from_f64(f64::from_bits(input.read_u64::<NativeEndian>().unwrap())).to_bits()),
+            st3: Some(f80::from_f64(f64::from_bits(input.read_u64::<NativeEndian>().unwrap())).to_bits()),
+            st4: Some(f80::from_f64(f64::from_bits(input.read_u64::<NativeEndian>().unwrap())).to_bits()),
+            st5: Some(f80::from_f64(f64::from_bits(input.read_u64::<NativeEndian>().unwrap())).to_bits()),
+            st6: Some(f80::from_f64(f64::from_bits(input.read_u64::<NativeEndian>().unwrap())).to_bits()),
+            st7: Some(f80::from_f64(f64::from_bits(input.read_u64::<NativeEndian>().unwrap())).to_bits()),
+            fctrl: Some(input.read_u32::<NativeEndian>().unwrap()),
+            fstat: Some(input.read_u32::<NativeEndian>().unwrap()),
+            ftag: Some(input.read_u32::<NativeEndian>().unwrap()),
+            fiseg: Some(input.read_u32::<NativeEndian>().unwrap()),
+            fioff: Some(input.read_u32::<NativeEndian>().unwrap()),
+            foseg: Some(input.read_u32::<NativeEndian>().unwrap()),
+            fooff: Some(input.read_u32::<NativeEndian>().unwrap()),
+            fop: Some(input.read_u32::<NativeEndian>().unwrap()),
+
+            xmm0: Some(input.read_u128::<NativeEndian>().unwrap()),
+            xmm1: Some(input.read_u128::<NativeEndian>().unwrap()),
+            xmm2: Some(input.read_u128::<NativeEndian>().unwrap()),
+            xmm3: Some(input.read_u128::<NativeEndian>().unwrap()),
+            xmm4: Some(input.read_u128::<NativeEndian>().unwrap()),
+            xmm5: Some(input.read_u128::<NativeEndian>().unwrap()),
+            xmm6: Some(input.read_u128::<NativeEndian>().unwrap()),
+            xmm7: Some(input.read_u128::<NativeEndian>().unwrap()),
+            xmm8: Some(input.read_u128::<NativeEndian>().unwrap()),
+            xmm9: Some(input.read_u128::<NativeEndian>().unwrap()),
+            xmm10: Some(input.read_u128::<NativeEndian>().unwrap()),
+            xmm11: Some(input.read_u128::<NativeEndian>().unwrap()),
+            xmm12: Some(input.read_u128::<NativeEndian>().unwrap()),
+            xmm13: Some(input.read_u128::<NativeEndian>().unwrap()),
+            xmm14: Some(input.read_u128::<NativeEndian>().unwrap()),
+            xmm15: Some(input.read_u128::<NativeEndian>().unwrap()),
+            mxcsr: Some(input.read_u32::<NativeEndian>().unwrap()),
         }
     }
     #[rustfmt::skip] // formatting can only make this horrible code look worse
     pub fn encode(&self, output: &mut Vec<u8>) {
-        let mut write = |slice: Option<&[u8]>, len: usize| {
-            output.reserve(len);
-            if let Some(slice) = slice {
-                assert_eq!(slice.len(), len);
-                output.extend_from_slice(slice);
-            } else {
-                output.extend(iter::repeat(0).take(len));
-            }
-        };
-        write(self.rax.map(u64::to_le_bytes).as_ref().map(|s| &s[..]), 8);
-        write(self.rbx.map(u64::to_le_bytes).as_ref().map(|s| &s[..]), 8);
-        write(self.rcx.map(u64::to_le_bytes).as_ref().map(|s| &s[..]), 8);
-        write(self.rdx.map(u64::to_le_bytes).as_ref().map(|s| &s[..]), 8);
-        write(self.rsi.map(u64::to_le_bytes).as_ref().map(|s| &s[..]), 8);
-        write(self.rdi.map(u64::to_le_bytes).as_ref().map(|s| &s[..]), 8);
-        write(self.rbp.map(u64::to_le_bytes).as_ref().map(|s| &s[..]), 8);
-        write(self.rsp.map(u64::to_le_bytes).as_ref().map(|s| &s[..]), 8);
-        write(self.r8.map(u64::to_le_bytes).as_ref().map(|s| &s[..]), 8);
-        write(self.r9.map(u64::to_le_bytes).as_ref().map(|s| &s[..]), 8);
-        write(self.r10.map(u64::to_le_bytes).as_ref().map(|s| &s[..]), 8);
-        write(self.r11.map(u64::to_le_bytes).as_ref().map(|s| &s[..]), 8);
-        write(self.r12.map(u64::to_le_bytes).as_ref().map(|s| &s[..]), 8);
-        write(self.r13.map(u64::to_le_bytes).as_ref().map(|s| &s[..]), 8);
-        write(self.r14.map(u64::to_le_bytes).as_ref().map(|s| &s[..]), 8);
-        write(self.r15.map(u64::to_le_bytes).as_ref().map(|s| &s[..]), 8);
-        write(self.rip.map(u64::to_le_bytes).as_ref().map(|s| &s[..]), 8);
-        write(self.eflags.map(u32::to_le_bytes).as_ref().map(|s| &s[..]), 4);
-        write(self.cs.map(u32::to_le_bytes).as_ref().map(|s| &s[..]), 4);
-        write(self.ss.map(u32::to_le_bytes).as_ref().map(|s| &s[..]), 4);
-        write(self.ds.map(u32::to_le_bytes).as_ref().map(|s| &s[..]), 4);
-        write(self.es.map(u32::to_le_bytes).as_ref().map(|s| &s[..]), 4);
-        write(self.fs.map(u32::to_le_bytes).as_ref().map(|s| &s[..]), 4);
-        write(self.gs.map(u32::to_le_bytes).as_ref().map(|s| &s[..]), 4);
-        write(self.st0.map(u128::to_le_bytes).as_ref().map(|s| &s[..10]), 10);
-        write(self.st1.map(u128::to_le_bytes).as_ref().map(|s| &s[..10]), 10);
-        write(self.st2.map(u128::to_le_bytes).as_ref().map(|s| &s[..10]), 10);
-        write(self.st3.map(u128::to_le_bytes).as_ref().map(|s| &s[..10]), 10);
-        write(self.st4.map(u128::to_le_bytes).as_ref().map(|s| &s[..10]), 10);
-        write(self.st5.map(u128::to_le_bytes).as_ref().map(|s| &s[..10]), 10);
-        write(self.st6.map(u128::to_le_bytes).as_ref().map(|s| &s[..10]), 10);
-        write(self.st7.map(u128::to_le_bytes).as_ref().map(|s| &s[..10]), 10);
-        write(self.fctrl.map(u32::to_le_bytes).as_ref().map(|s| &s[..]), 4);
-        write(self.fstat.map(u32::to_le_bytes).as_ref().map(|s| &s[..]), 4);
-        write(self.ftag.map(u32::to_le_bytes).as_ref().map(|s| &s[..]), 4);
-        write(self.fiseg.map(u32::to_le_bytes).as_ref().map(|s| &s[..]), 4);
-        write(self.fioff.map(u32::to_le_bytes).as_ref().map(|s| &s[..]), 4);
-        write(self.foseg.map(u32::to_le_bytes).as_ref().map(|s| &s[..]), 4);
-        write(self.fooff.map(u32::to_le_bytes).as_ref().map(|s| &s[..]), 4);
-        write(self.fop.map(u32::to_le_bytes).as_ref().map(|s| &s[..]), 4);
-        write(self.xmm0.map(u128::to_le_bytes).as_ref().map(|s| &s[..]), 16);
-        write(self.xmm1.map(u128::to_le_bytes).as_ref().map(|s| &s[..]), 16);
-        write(self.xmm2.map(u128::to_le_bytes).as_ref().map(|s| &s[..]), 16);
-        write(self.xmm3.map(u128::to_le_bytes).as_ref().map(|s| &s[..]), 16);
-        write(self.xmm4.map(u128::to_le_bytes).as_ref().map(|s| &s[..]), 16);
-        write(self.xmm5.map(u128::to_le_bytes).as_ref().map(|s| &s[..]), 16);
-        write(self.xmm6.map(u128::to_le_bytes).as_ref().map(|s| &s[..]), 16);
-        write(self.xmm7.map(u128::to_le_bytes).as_ref().map(|s| &s[..]), 16);
-        write(self.xmm8.map(u128::to_le_bytes).as_ref().map(|s| &s[..]), 16);
-        write(self.xmm9.map(u128::to_le_bytes).as_ref().map(|s| &s[..]), 16);
-        write(self.xmm10.map(u128::to_le_bytes).as_ref().map(|s| &s[..]), 16);
-        write(self.xmm11.map(u128::to_le_bytes).as_ref().map(|s| &s[..]), 16);
-        write(self.xmm12.map(u128::to_le_bytes).as_ref().map(|s| &s[..]), 16);
-        write(self.xmm13.map(u128::to_le_bytes).as_ref().map(|s| &s[..]), 16);
-        write(self.xmm14.map(u128::to_le_bytes).as_ref().map(|s| &s[..]), 16);
-        write(self.xmm15.map(u128::to_le_bytes).as_ref().map(|s| &s[..]), 16);
-        write(self.mxcsr.map(u32::to_le_bytes).as_ref().map(|s| &s[..]), 4);
-        write(self.orig_rax.map(u64::to_le_bytes).as_ref().map(|s| &s[..]), 8);
-        write(self.fs_base.map(u64::to_le_bytes).as_ref().map(|s| &s[..]), 8);
-        write(self.gs_base.map(u64::to_le_bytes).as_ref().map(|s| &s[..]), 8);
+        output.write_u64::<NativeEndian>(self.rax.unwrap_or(0)).unwrap();
+        output.write_u64::<NativeEndian>(self.rbx.unwrap_or(0)).unwrap();
+        output.write_u64::<NativeEndian>(self.rcx.unwrap_or(0)).unwrap();
+        output.write_u64::<NativeEndian>(self.rdx.unwrap_or(0)).unwrap();
+        output.write_u64::<NativeEndian>(self.rsi.unwrap_or(0)).unwrap();
+        output.write_u64::<NativeEndian>(self.rdi.unwrap_or(0)).unwrap();
+        output.write_u64::<NativeEndian>(self.rbp.unwrap_or(0)).unwrap();
+        output.write_u64::<NativeEndian>(self.rsp.unwrap_or(0)).unwrap();
+        output.write_u64::<NativeEndian>(self.r8.unwrap_or(0)).unwrap();
+        output.write_u64::<NativeEndian>(self.r9.unwrap_or(0)).unwrap();
+        output.write_u64::<NativeEndian>(self.r10.unwrap_or(0)).unwrap();
+        output.write_u64::<NativeEndian>(self.r11.unwrap_or(0)).unwrap();
+        output.write_u64::<NativeEndian>(self.r12.unwrap_or(0)).unwrap();
+        output.write_u64::<NativeEndian>(self.r13.unwrap_or(0)).unwrap();
+        output.write_u64::<NativeEndian>(self.r14.unwrap_or(0)).unwrap();
+        output.write_u64::<NativeEndian>(self.r15.unwrap_or(0)).unwrap();
+        output.write_u64::<NativeEndian>(self.rip.unwrap_or(0)).unwrap();
+        output.write_u32::<NativeEndian>(self.eflags.unwrap_or(0)).unwrap();
+        output.write_u32::<NativeEndian>(self.cs.unwrap_or(0)).unwrap();
+        output.write_u32::<NativeEndian>(self.ss.unwrap_or(0)).unwrap();
+        output.write_u32::<NativeEndian>(self.ds.unwrap_or(0)).unwrap();
+        output.write_u32::<NativeEndian>(self.es.unwrap_or(0)).unwrap();
+        output.write_u32::<NativeEndian>(self.fs.unwrap_or(0)).unwrap();
+        output.write_u32::<NativeEndian>(self.gs.unwrap_or(0)).unwrap();
+
+        output.write_u64::<NativeEndian>(f80::from_bits(self.st0.unwrap_or(0)).to_f64().to_bits()).unwrap();
+        output.write_u64::<NativeEndian>(f80::from_bits(self.st1.unwrap_or(0)).to_f64().to_bits()).unwrap();
+        output.write_u64::<NativeEndian>(f80::from_bits(self.st2.unwrap_or(0)).to_f64().to_bits()).unwrap();
+        output.write_u64::<NativeEndian>(f80::from_bits(self.st3.unwrap_or(0)).to_f64().to_bits()).unwrap();
+        output.write_u64::<NativeEndian>(f80::from_bits(self.st4.unwrap_or(0)).to_f64().to_bits()).unwrap();
+        output.write_u64::<NativeEndian>(f80::from_bits(self.st5.unwrap_or(0)).to_f64().to_bits()).unwrap();
+        output.write_u64::<NativeEndian>(f80::from_bits(self.st6.unwrap_or(0)).to_f64().to_bits()).unwrap();
+        output.write_u64::<NativeEndian>(f80::from_bits(self.st7.unwrap_or(0)).to_f64().to_bits()).unwrap();
+        output.write_u32::<NativeEndian>(self.fctrl.unwrap_or(0)).unwrap();
+        output.write_u32::<NativeEndian>(self.fstat.unwrap_or(0)).unwrap();
+        output.write_u32::<NativeEndian>(self.ftag.unwrap_or(0)).unwrap();
+        output.write_u32::<NativeEndian>(self.fiseg.unwrap_or(0)).unwrap();
+        output.write_u32::<NativeEndian>(self.fioff.unwrap_or(0)).unwrap();
+        output.write_u32::<NativeEndian>(self.foseg.unwrap_or(0)).unwrap();
+        output.write_u32::<NativeEndian>(self.fooff.unwrap_or(0)).unwrap();
+        output.write_u32::<NativeEndian>(self.fop.unwrap_or(0)).unwrap();
+
+        output.write_u128::<NativeEndian>(self.xmm0.unwrap_or(0)).unwrap();
+        output.write_u128::<NativeEndian>(self.xmm1.unwrap_or(0)).unwrap();
+        output.write_u128::<NativeEndian>(self.xmm2.unwrap_or(0)).unwrap();
+        output.write_u128::<NativeEndian>(self.xmm3.unwrap_or(0)).unwrap();
+        output.write_u128::<NativeEndian>(self.xmm4.unwrap_or(0)).unwrap();
+        output.write_u128::<NativeEndian>(self.xmm5.unwrap_or(0)).unwrap();
+        output.write_u128::<NativeEndian>(self.xmm6.unwrap_or(0)).unwrap();
+        output.write_u128::<NativeEndian>(self.xmm7.unwrap_or(0)).unwrap();
+        output.write_u128::<NativeEndian>(self.xmm8.unwrap_or(0)).unwrap();
+        output.write_u128::<NativeEndian>(self.xmm9.unwrap_or(0)).unwrap();
+        output.write_u128::<NativeEndian>(self.xmm10.unwrap_or(0)).unwrap();
+        output.write_u128::<NativeEndian>(self.xmm11.unwrap_or(0)).unwrap();
+        output.write_u128::<NativeEndian>(self.xmm12.unwrap_or(0)).unwrap();
+        output.write_u128::<NativeEndian>(self.xmm13.unwrap_or(0)).unwrap();
+        output.write_u128::<NativeEndian>(self.xmm14.unwrap_or(0)).unwrap();
+        output.write_u128::<NativeEndian>(self.xmm15.unwrap_or(0)).unwrap();
+        output.write_u32::<NativeEndian>(self.mxcsr.unwrap_or(0)).unwrap();
     }
 }
