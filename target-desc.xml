@@ -32,14 +32,14 @@
     <reg name="es" bitsize="32" group="general" />
     <reg name="fs" bitsize="32" group="general" />
     <reg name="gs" bitsize="32" group="general" />
-    <reg name="st0" bitsize="80" type="float" group="float" />
-    <reg name="st1" bitsize="80" type="float" group="float" />
-    <reg name="st2" bitsize="80" type="float" group="float" />
-    <reg name="st3" bitsize="80" type="float" group="float" />
-    <reg name="st4" bitsize="80" type="float" group="float" />
-    <reg name="st5" bitsize="80" type="float" group="float" />
-    <reg name="st6" bitsize="80" type="float" group="float" />
-    <reg name="st7" bitsize="80" type="float" group="float" />
+    <reg name="st0" bitsize="64" type="float" group="float" />
+    <reg name="st1" bitsize="64" type="float" group="float" />
+    <reg name="st2" bitsize="64" type="float" group="float" />
+    <reg name="st3" bitsize="64" type="float" group="float" />
+    <reg name="st4" bitsize="64" type="float" group="float" />
+    <reg name="st5" bitsize="64" type="float" group="float" />
+    <reg name="st6" bitsize="64" type="float" group="float" />
+    <reg name="st7" bitsize="64" type="float" group="float" />
     <reg name="fctrl" bitsize="32" type="float" group="float" />
     <reg name="fstat" bitsize="32" type="float" group="float" />
     <reg name="ftag" bitsize="32" type="float" group="float" />

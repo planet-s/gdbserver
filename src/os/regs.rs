@@ -1,9 +1,7 @@
 use byteorder::{NativeEndian, ReadBytesExt, WriteBytesExt};
-use f80::f80;
 
 #[derive(Default)]
 pub struct Registers {
-    // Gotten from gnu-binutils/gdb/regformats/i386/amd64-linux.dat
     pub rax: Option<u64>,
     pub rbx: Option<u64>,
     pub rcx: Option<u64>,
@@ -94,14 +92,14 @@ impl Registers {
             fs: Some(input.read_u32::<NativeEndian>().unwrap()),
             gs: Some(input.read_u32::<NativeEndian>().unwrap()),
 
-            st0: Some(f80::from_f64(f64::from_bits(input.read_u64::<NativeEndian>().unwrap())).to_bits()),
-            st1: Some(f80::from_f64(f64::from_bits(input.read_u64::<NativeEndian>().unwrap())).to_bits()),
-            st2: Some(f80::from_f64(f64::from_bits(input.read_u64::<NativeEndian>().unwrap())).to_bits()),
-            st3: Some(f80::from_f64(f64::from_bits(input.read_u64::<NativeEndian>().unwrap())).to_bits()),
-            st4: Some(f80::from_f64(f64::from_bits(input.read_u64::<NativeEndian>().unwrap())).to_bits()),
-            st5: Some(f80::from_f64(f64::from_bits(input.read_u64::<NativeEndian>().unwrap())).to_bits()),
-            st6: Some(f80::from_f64(f64::from_bits(input.read_u64::<NativeEndian>().unwrap())).to_bits()),
-            st7: Some(f80::from_f64(f64::from_bits(input.read_u64::<NativeEndian>().unwrap())).to_bits()),
+            st0: Some(0),
+            st1: Some(0),
+            st2: Some(0),
+            st3: Some(0),
+            st4: Some(0),
+            st5: Some(0),
+            st6: Some(0),
+            st7: Some(0),
             fctrl: Some(input.read_u32::<NativeEndian>().unwrap()),
             fstat: Some(input.read_u32::<NativeEndian>().unwrap()),
             ftag: Some(input.read_u32::<NativeEndian>().unwrap()),
@@ -157,14 +155,14 @@ impl Registers {
         output.write_u32::<NativeEndian>(self.fs.unwrap_or(0)).unwrap();
         output.write_u32::<NativeEndian>(self.gs.unwrap_or(0)).unwrap();
 
-        output.write_u64::<NativeEndian>(f80::from_bits(self.st0.unwrap_or(0)).to_f64().to_bits()).unwrap();
-        output.write_u64::<NativeEndian>(f80::from_bits(self.st1.unwrap_or(0)).to_f64().to_bits()).unwrap();
-        output.write_u64::<NativeEndian>(f80::from_bits(self.st2.unwrap_or(0)).to_f64().to_bits()).unwrap();
-        output.write_u64::<NativeEndian>(f80::from_bits(self.st3.unwrap_or(0)).to_f64().to_bits()).unwrap();
-        output.write_u64::<NativeEndian>(f80::from_bits(self.st4.unwrap_or(0)).to_f64().to_bits()).unwrap();
-        output.write_u64::<NativeEndian>(f80::from_bits(self.st5.unwrap_or(0)).to_f64().to_bits()).unwrap();
-        output.write_u64::<NativeEndian>(f80::from_bits(self.st6.unwrap_or(0)).to_f64().to_bits()).unwrap();
-        output.write_u64::<NativeEndian>(f80::from_bits(self.st7.unwrap_or(0)).to_f64().to_bits()).unwrap();
+        output.write_u64::<NativeEndian>(0).unwrap();
+        output.write_u64::<NativeEndian>(0).unwrap();
+        output.write_u64::<NativeEndian>(0).unwrap();
+        output.write_u64::<NativeEndian>(0).unwrap();
+        output.write_u64::<NativeEndian>(0).unwrap();
+        output.write_u64::<NativeEndian>(0).unwrap();
+        output.write_u64::<NativeEndian>(0).unwrap();
+        output.write_u64::<NativeEndian>(0).unwrap();
         output.write_u32::<NativeEndian>(self.fctrl.unwrap_or(0)).unwrap();
         output.write_u32::<NativeEndian>(self.fstat.unwrap_or(0)).unwrap();
         output.write_u32::<NativeEndian>(self.ftag.unwrap_or(0)).unwrap();
