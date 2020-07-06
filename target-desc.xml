@@ -69,4 +69,9 @@
     <reg name="xmm15" bitsize="128" type="float" group="float" />
     <reg name="mxcsr" bitsize="32" type="float" group="float" />
   </feature>
+
+  <feature name="org.gnu.gdb.i386.segments">
+    <reg name="fs_base" bitsize="64" group="general" />
+    <reg name="gs_base" bitsize="64" group="general" />
+  </feature>
 </target>

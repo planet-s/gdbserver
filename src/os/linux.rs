@@ -135,7 +135,7 @@ impl super::Target for Os {
         }
     }
 
-    fn status(&self) -> StopReason {
+    fn status_native(&self) -> StopReason {
         unsafe {
             if libc::WIFEXITED(self.last_status.get()) {
                 StopReason::Exited(
@@ -238,6 +238,9 @@ impl super::Target for Os {
         registers.xmm15 = Some(float.xmm_space[15] as _);
         registers.mxcsr = Some(float.mxcsr);
 
+        registers.fs_base = Some(int.fs_base as _);
+        registers.gs_base = Some(int.gs_base as _);
+
         Ok(registers)
     }
 
@@ -317,6 +320,9 @@ impl super::Target for Os {
             .map(|r| r as _)
             .unwrap_or(float.xmm_space[15]);
         float.mxcsr = registers.mxcsr.unwrap_or(float.mxcsr);
+
+        int.fs_base = registers.fs_base.unwrap_or(int.fs_base);
+        int.gs_base = registers.gs_base.unwrap_or(int.gs_base);
 
         unsafe {
             e!(libc::ptrace(libc::PTRACE_SETREGS, self.pid, 0, &int));

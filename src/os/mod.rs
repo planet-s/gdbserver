@@ -2,7 +2,7 @@ use crate::Result;
 
 use std::ops::RangeBounds;
 
-use gdb_remote_protocol::StopReason;
+use gdb_remote_protocol::{StopReason, Signal};
 
 mod regs;
 
@@ -21,7 +21,21 @@ pub trait Target: Sized {
     fn new(program: String, args: Vec<String>) -> Result<Os, Box<dyn std::error::Error>>;
 
     /// Get the last status of the tracee
-    fn status(&self) -> StopReason;
+    fn status_native(&self) -> StopReason;
+
+    /// Get the last status of the tracee, but convert it from libc signals to GDB signals
+    fn status(&self) -> StopReason {
+        match self.status_native() {
+            StopReason::Signal(sig) => StopReason::Signal(
+                Signal::from_libc(libc::c_int::from(sig)).unwrap_or(Signal::SIGTRAP) as u8,
+            ),
+            StopReason::ExitedWithSignal(pid, sig) => StopReason::ExitedWithSignal(
+                pid,
+                Signal::from_libc(libc::c_int::from(sig)).unwrap_or(Signal::SIGTERM) as u8,
+            ),
+            status => status,
+        }
+    }
 
     /// Get the process/thread id
     fn pid(&self) -> u32;

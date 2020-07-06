@@ -60,13 +60,16 @@ pub struct Registers {
     pub xmm14: Option<u128>,
     pub xmm15: Option<u128>,
     pub mxcsr: Option<u32>,
+
+    pub fs_base: Option<u64>,
+    pub gs_base: Option<u64>,
 }
 impl Registers {
     // The following sadly assume the endianness in order to only read
     // 10 bits in the st* stuff instead of the full 16.
     #[rustfmt::skip] // formatting can only make this horrible code look worse
     pub fn decode(mut input: &[u8]) -> Self {
-        Self {
+        let res = Self {
             rax: Some(input.read_u64::<NativeEndian>().unwrap()),
             rbx: Some(input.read_u64::<NativeEndian>().unwrap()),
             rcx: Some(input.read_u64::<NativeEndian>().unwrap()),
@@ -92,14 +95,14 @@ impl Registers {
             fs: Some(input.read_u32::<NativeEndian>().unwrap()),
             gs: Some(input.read_u32::<NativeEndian>().unwrap()),
 
-            st0: Some(0),
-            st1: Some(0),
-            st2: Some(0),
-            st3: Some(0),
-            st4: Some(0),
-            st5: Some(0),
-            st6: Some(0),
-            st7: Some(0),
+            st0: Some(input.read_u64::<NativeEndian>().map(|_| 0).unwrap()),
+            st1: Some(input.read_u64::<NativeEndian>().map(|_| 0).unwrap()),
+            st2: Some(input.read_u64::<NativeEndian>().map(|_| 0).unwrap()),
+            st3: Some(input.read_u64::<NativeEndian>().map(|_| 0).unwrap()),
+            st4: Some(input.read_u64::<NativeEndian>().map(|_| 0).unwrap()),
+            st5: Some(input.read_u64::<NativeEndian>().map(|_| 0).unwrap()),
+            st6: Some(input.read_u64::<NativeEndian>().map(|_| 0).unwrap()),
+            st7: Some(input.read_u64::<NativeEndian>().map(|_| 0).unwrap()),
             fctrl: Some(input.read_u32::<NativeEndian>().unwrap()),
             fstat: Some(input.read_u32::<NativeEndian>().unwrap()),
             ftag: Some(input.read_u32::<NativeEndian>().unwrap()),
@@ -126,7 +129,12 @@ impl Registers {
             xmm14: Some(input.read_u128::<NativeEndian>().unwrap()),
             xmm15: Some(input.read_u128::<NativeEndian>().unwrap()),
             mxcsr: Some(input.read_u32::<NativeEndian>().unwrap()),
-        }
+
+            fs_base: Some(input.read_u64::<NativeEndian>().unwrap()),
+            gs_base: Some(input.read_u64::<NativeEndian>().unwrap()),
+        };
+        assert!(input.is_empty(), "Input must be empty after parsing registers");
+        res
     }
     #[rustfmt::skip] // formatting can only make this horrible code look worse
     pub fn encode(&self, output: &mut Vec<u8>) {
@@ -189,5 +197,8 @@ impl Registers {
         output.write_u128::<NativeEndian>(self.xmm14.unwrap_or(0)).unwrap();
         output.write_u128::<NativeEndian>(self.xmm15.unwrap_or(0)).unwrap();
         output.write_u32::<NativeEndian>(self.mxcsr.unwrap_or(0)).unwrap();
+
+        output.write_u64::<NativeEndian>(self.fs_base.unwrap_or(0)).unwrap();
+        output.write_u64::<NativeEndian>(self.gs_base.unwrap_or(0)).unwrap();
     }
 }

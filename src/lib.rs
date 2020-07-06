@@ -9,8 +9,9 @@ use std::{
 
 use gdb_remote_protocol::{
     Error, FileSystem, Handler, Id, LibcFS, MemoryRegion, ProcessType,
-    StopReason, ThreadId, VCont, VContFeature,
+    Signal, StopReason, ThreadId, VCont, VContFeature,
 };
+use num_traits::FromPrimitive;
 use log::debug;
 use structopt::StructOpt;
 
@@ -26,7 +27,7 @@ const ERROR_GET_PATH: u8 = std::u8::MAX - 1;
 #[derive(Debug, StructOpt)]
 pub struct Opt {
     /// The address which to bind the server to
-    #[structopt(short = "a", long = "addr", default_value = "0.0.0.0:64126")]
+    #[structopt(short = "a", long = "addr", default_value = "127.0.0.1:64126")]
     pub addr: String,
     /// The type of address specified
     #[structopt(short = "t", long = "type", default_value = "tcp", possible_values = &["tcp", "unix", "stdio"])]
@@ -112,13 +113,13 @@ impl Handler for App {
                     self.tracee.cont(None)?;
                 }
                 VCont::ContinueWithSignal(signal) => {
-                    self.tracee.cont(Some(signal))?;
+                    self.tracee.cont(Signal::from_u8(signal).and_then(Signal::to_libc).map(|s| s as u8))?;
                 }
                 VCont::Step => {
                     self.tracee.step(None)?;
                 }
                 VCont::StepWithSignal(signal) => {
-                    self.tracee.step(Some(signal))?;
+                    self.tracee.step(Signal::from_u8(signal).and_then(Signal::to_libc).map(|s| s as u8))?;
                 }
                 VCont::RangeStep(ref range) => {
                     // std::ops::Range<T: Copy> should probably also be Copy, but it isn't.
@@ -129,7 +130,9 @@ impl Handler for App {
             break;
         }
 
-        Ok(self.tracee.status())
+        let status = self.tracee.status();
+        debug!("vCont sending status {:?}", status);
+        Ok(status)
     }
     fn read_bytes(&self, object: String, annex: String, offset: u64, length: u64) -> Result<(Vec<u8>, bool)> {
         let transfer_bytes = |source: &[u8]| -> Result<(Vec<u8>, bool)> {

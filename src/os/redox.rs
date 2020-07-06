@@ -166,7 +166,7 @@ impl super::Target for Os {
         }
     }
 
-    fn status(&self) -> StopReason {
+    fn status_native(&self) -> StopReason {
         if syscall::wifexited(self.last_status.get()) {
             StopReason::Exited(
                 self.pid as _,

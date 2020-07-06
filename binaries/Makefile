@@ -1,4 +1,4 @@
-all: minimal-asm redox-asm minimal-c
+all: minimal-asm redox-asm minimal-c signal-c
 
 clean:
 	rm minimal-asm redox-asm minimal-c
