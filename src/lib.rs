@@ -70,7 +70,7 @@ impl Handler for App {
         Ok(buf)
     }
     fn write_memory(&self, address: u64, bytes: &[u8]) -> Result<()> {
-        self.tracee.setmem(bytes, address as usize)?;
+        self.tracee.setmem(address as usize, bytes)?;
         Ok(())
     }
     fn query_supported_features(&self) -> Vec<String> {

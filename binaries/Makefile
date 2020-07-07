@@ -1,7 +1,7 @@
-all: minimal-asm redox-asm minimal-c signal-c
+all: minimal-asm redox-asm minimal-c signal-c sighandler-c
 
 clean:
-	rm minimal-asm redox-asm minimal-c
+	rm minimal-asm redox-asm minimal-c signal-c sighandler-c
 
 %-asm.o: %.asm
 	nix-shell -p nasm --run "nasm -f elf64 $< -g -o $@"

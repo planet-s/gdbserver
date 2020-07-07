@@ -47,10 +47,10 @@ pub trait Target: Sized {
     fn setregs(&self, regs: &Registers) -> Result<()>;
 
     /// Read a region of memory from tracee
-    fn getmem(&self, src: usize, dest: &mut [u8]) -> Result<usize>;
+    fn getmem(&self, address: usize, memory: &mut [u8]) -> Result<usize>;
 
     /// Read a region of memory from tracee
-    fn setmem(&self, src: &[u8], dest: usize) -> Result<()>;
+    fn setmem(&self, address: usize, memory: &[u8]) -> Result<()>;
 
     /// Single-step one instruction, return instruction pointer
     fn step(&self, signal: Option<u8>) -> Result<Option<u64>>;

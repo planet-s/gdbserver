@@ -14,13 +14,13 @@ log = "0.4.8"
 byteorder = "1.3.4"
 num-traits = "0.2.12"
 # f80 = { git = "https://gitlab.redox-os.org/redox-os/f80.git", rev = "d8de286" }
+libc = "0.2.71"
 
 [[bin]]
 path = "./bin/gdb-redox.rs"
 name = "gdb-redox"
 
-[target.'cfg(target_os = "linux")'.dependencies]
-libc = "0.2.71"
 [target.'cfg(target_os = "redox")'.dependencies]
 redox_syscall = { git = "https://gitlab.redox-os.org/redox-os/syscall.git" }
-strace = { git = "https://gitlab.redox-os.org/redox-os/strace-redox" }
+# strace = { git = "https://gitlab.redox-os.org/redox-os/strace-redox" }
+strace = { path = "../../strace/source" }

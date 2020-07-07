@@ -332,18 +332,18 @@ impl super::Target for Os {
         Ok(())
     }
 
-    fn getmem(&self, src: usize, dest: &mut [u8]) -> Result<usize> {
+    fn getmem(&self, address: usize, memory: &mut [u8]) -> Result<usize> {
         // TODO: Don't report errors when able to read part of requested?
         // Also implement this in the Redox kernel perhaps
-        getmem(src, dest, |addr| unsafe {
+        getmem(address, memory, |addr| unsafe {
             Ok(e!(libc::ptrace(libc::PTRACE_PEEKDATA, self.pid, addr)) as usize)
         })
     }
 
-    fn setmem(&self, src: &[u8], dest: usize) -> Result<()> {
+    fn setmem(&self, address: usize, memory: &[u8]) -> Result<()> {
         setmem(
-            src,
-            dest,
+            memory,
+            address,
             |addr| unsafe { Ok(e!(libc::ptrace(libc::PTRACE_PEEKDATA, self.pid, addr)) as usize) },
             |addr, word| unsafe {
                 e!(libc::ptrace(libc::PTRACE_POKEDATA, self.pid, addr, word));

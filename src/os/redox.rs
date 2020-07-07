@@ -11,7 +11,7 @@ use std::{
 
 use gdb_remote_protocol::{Error, StopReason};
 use log::error;
-use strace::{Flags, Tracer};
+use strace::{EventData, Flags, Tracer};
 use syscall::flag::*;
 
 pub struct Os {
@@ -69,17 +69,34 @@ impl Os {
     /// Continues the tracer with the specified flags, and the breakpoint
     /// flag. If the process exits, we waitpid the child and set the status. We
     /// also return `Exited` to signal that the process is no longer
-    /// alive. Returns `Running` and sets status to SIGSTOP if the process does
+    /// alive. Returns `Running` and sets status to SIGTRAP if the process does
     /// not exit.
     fn next(&self, flags: Flags) -> Result<ProcessState> {
         let mut tracer = self.tracer.borrow_mut();
 
-        match tracer.next(flags | Flags::STOP_BREAKPOINT) {
-            Ok(_event) => {
-                // Just pretend ptrace SIGSTOP:ped this
-                let status = (SIGSTOP << 8) | 0x7f;
+        match tracer.next(flags | Flags::STOP_BREAKPOINT | Flags::STOP_SIGNAL) {
+            Ok(event) => {
+                let signal = if event.cause == Flags::STOP_SIGNAL {
+                    let (signal, handler) = match event.data {
+                        EventData::StopSignal(sig, handler) => (sig, handler),
+                        _ => unreachable!(),
+                    };
+
+                    // If breakpoint is signal, step into the signal handler
+                    if handler != syscall::SIG_DFL && handler != syscall::SIG_IGN {
+                        e!(tracer.next(Flags::STOP_SINGLESTEP));
+                    }
+
+                    signal
+                } else {
+                    // Just pretend ptrace SIGTRAP:ped this
+                    SIGTRAP
+                };
+
+                let status = (signal << 8) | 0x7f;
                 assert!(syscall::wifstopped(status));
-                assert_eq!(syscall::wstopsig(status), SIGSTOP);
+                assert_eq!(syscall::wstopsig(status), signal);
+                self.last_status.set(status);
 
                 Ok(ProcessState::Running)
             },
@@ -154,8 +171,7 @@ impl super::Target for Os {
 
                 // TODO: Don't stop only on syscall, stop on first instruction.
                 // Single-stepping doesn't work across fexec yet for some reason.
-                // e!(tracer.next(Flags::STOP_SINGLESTEP));
-                e!(tracer.next(Flags::STOP_EXEC));
+                e!(tracer.next(Flags::STOP_SINGLESTEP));
 
                 Ok(Os {
                     pid,
@@ -335,17 +351,17 @@ impl super::Target for Os {
         Ok(())
     }
 
-    fn getmem(&self, src: usize, dest: &mut [u8]) -> Result<usize> {
+    fn getmem(&self, address: usize, memory: &mut [u8]) -> Result<usize> {
         // TODO: Don't report errors when able to read part of requested?
         // Also implement this in the Redox kernel perhaps
         let mut tracer = self.tracer.borrow_mut();
-        e!(tracer.mem.read(src as *const u8, dest));
-        Ok(dest.len())
+        e!(tracer.mem.read(address as *const u8, memory));
+        Ok(memory.len())
     }
 
-    fn setmem(&self, src: &[u8], dest: usize) -> Result<()> {
+    fn setmem(&self, address: usize, memory: &[u8]) -> Result<()> {
         let mut tracer = self.tracer.borrow_mut();
-        e!(tracer.mem.write(src, dest as *mut u8));
+        e!(tracer.mem.write(address as *mut u8, memory));
         Ok(())
     }
 
