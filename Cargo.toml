@@ -22,5 +22,5 @@ name = "gdb-redox"
 
 [target.'cfg(target_os = "redox")'.dependencies]
 redox_syscall = { git = "https://gitlab.redox-os.org/redox-os/syscall.git" }
-# strace = { git = "https://gitlab.redox-os.org/redox-os/strace-redox" }
-strace = { path = "../../strace/source" }
+strace = { git = "https://gitlab.redox-os.org/redox-os/strace-redox" }
+# strace = { path = "../../strace/source" }
