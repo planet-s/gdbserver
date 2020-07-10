@@ -100,7 +100,7 @@ dependencies = [
  "memchr 2.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "num-traits 0.2.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "redox_syscall 0.1.56 (git+https://gitlab.redox-os.org/redox-os/syscall.git)",
- "strace 0.1.0",
+ "strace 0.1.0 (git+https://gitlab.redox-os.org/redox-os/strace-redox)",
  "structopt 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -278,6 +278,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "strace"
 version = "0.1.0"
+source = "git+https://gitlab.redox-os.org/redox-os/strace-redox#c788ac2b76db3d5386041bf4ce26cec5833bb974"
 dependencies = [
  "bitflags 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "redox_syscall 0.1.56 (git+https://gitlab.redox-os.org/redox-os/syscall.git)",
@@ -511,6 +512,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum redox_syscall 0.1.56 (git+https://gitlab.redox-os.org/redox-os/syscall.git)" = "<none>"
 "checksum regex 1.3.9 (registry+https://github.com/rust-lang/crates.io-index)" = "9c3780fcf44b193bc4d09f36d2a3c87b251da4a046c87795a0d35f4f927ad8e6"
 "checksum regex-syntax 0.6.18 (registry+https://github.com/rust-lang/crates.io-index)" = "26412eb97c6b088a6997e05f69403a802a92d520de2f8e63c2b65f9e0f47c4e8"
+"checksum strace 0.1.0 (git+https://gitlab.redox-os.org/redox-os/strace-redox)" = "<none>"
 "checksum strsim 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)" = "8ea5119cdb4c55b55d432abb513a0429384878c15dde60cc77b1c99de1a95a6a"
 "checksum structopt 0.2.18 (registry+https://github.com/rust-lang/crates.io-index)" = "16c2cdbf9cc375f15d1b4141bc48aeef444806655cd0e904207edc8d68d86ed7"
 "checksum structopt 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)" = "de2f5e239ee807089b62adce73e48c625e0ed80df02c7ab3f068f5db5281065c"
