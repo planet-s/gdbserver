@@ -1,4 +1,4 @@
-all: minimal-asm redox-asm minimal-c signal-c sighandler-c sigsegv-c
+all: minimal-asm redox-asm minimal-c signal-c sighandler-c sigsegv-c float-c
 
 clean:
 	rm minimal-asm redox-asm minimal-c signal-c sighandler-c
