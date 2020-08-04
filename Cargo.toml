@@ -6,7 +6,7 @@ edition = "2018"
 default-run = "gdbserver"
 
 [dependencies]
-gdb-remote-protocol = { path = "rust-gdb-remote-protocol" }
+gdb-remote-protocol = { path = "rust-gdb-remote-protocol", features = ["libc"] }
 structopt = "0.3.15"
 memchr = "2.3.3"
 env_logger = "0.7.1"
