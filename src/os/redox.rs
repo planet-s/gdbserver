@@ -1,4 +1,4 @@
-use super::Registers;
+use super::{Target, Registers};
 use crate::Result;
 
 use std::{
@@ -71,7 +71,26 @@ impl Os {
     /// also return `Exited` to signal that the process is no longer
     /// alive. Returns `Running` and sets status to SIGTRAP if the process does
     /// not exit.
-    fn next(&self, flags: Flags) -> Result<ProcessState> {
+    fn next(&self, signal: Option<u8>, mut flags: Flags) -> Result<ProcessState> {
+        match signal {
+            Some(signal) => {
+                let prev = match self.status_native() {
+                    StopReason::Signal(sig) => Some(sig),
+                    StopReason::ExitedWithSignal(_, sig) => Some(sig),
+                    _ => None,
+                };
+
+                if prev != Some(signal) {
+                    // If signal was changed by debugger
+                    println!("TODO: Resume from signal {}!", signal);
+                }
+            },
+            None => {
+                // If signal was supressed by debugger
+                flags |= Flags::FLAG_IGNORE;
+            },
+        }
+
         let mut tracer = self.tracer.borrow_mut();
 
         match tracer.next(flags | Flags::STOP_BREAKPOINT | Flags::STOP_SIGNAL) {
@@ -82,7 +101,7 @@ impl Os {
                         _ => unreachable!(),
                     };
 
-                    // If breakpoint is signal, step into the signal handler
+                    // If breakpoint is signal and it's handled by userspace, step into the signal handler
                     if handler != syscall::SIG_DFL && handler != syscall::SIG_IGN {
                         e!(tracer.next(Flags::STOP_SINGLESTEP));
                     }
@@ -112,7 +131,7 @@ impl Os {
     }
 }
 
-impl super::Target for Os {
+impl Target for Os {
     fn new(program: String, args: Vec<String>) -> Result<Self, Box<dyn std::error::Error>> {
         unsafe {
             let pid = e!(syscall::clone(CloneFlags::empty()));
@@ -365,8 +384,8 @@ impl super::Target for Os {
         Ok(())
     }
 
-    fn step(&self, _signal: Option<u8>) -> Result<Option<u64>> {
-        if self.next(Flags::STOP_SINGLESTEP)? == ProcessState::Running {
+    fn step(&self, signal: Option<u8>) -> Result<Option<u64>> {
+        if self.next(signal, Flags::STOP_SINGLESTEP)? == ProcessState::Running {
             let mut tracer = self.tracer.borrow_mut();
 
             let rip = e!(tracer.regs.get_int()).rip;
@@ -376,8 +395,8 @@ impl super::Target for Os {
         }
     }
 
-    fn cont(&self, _signal: Option<u8>) -> Result<()> {
-        self.next(Flags::empty())?;
+    fn cont(&self, signal: Option<u8>) -> Result<()> {
+        self.next(signal, Flags::empty())?;
         Ok(())
     }
 
