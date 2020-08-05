@@ -6,7 +6,7 @@ clean:
 %-asm.o: %.asm
 	nix-shell -p nasm --run "nasm -f elf64 $< -g -o $@"
 %-c: %.c
-	nix-shell -p musl --run "musl-gcc -g -static $< -o $@"
+	nix-shell -p musl --run "musl-gcc -mno-sse -g -static $< -o $@"
 
 %: %.o
 	ld "$<" -o "$@"
